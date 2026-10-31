@@ -1,0 +1,36 @@
+{
+  "name": "dukkan",
+  "version": "1.0.0",
+  "description": "Your own WhatsApp ordering store in 2 minutes. Self-hosted menu & catalog with QR codes, Arabic/English, zero commissions.",
+  "main": "server.js",
+  "license": "MIT",
+  "author": "mashraf1997",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mashraf1997/dukkan.git"
+  },
+  "keywords": [
+    "whatsapp",
+    "ecommerce",
+    "menu",
+    "qr-menu",
+    "restaurant",
+    "catalog",
+    "self-hosted",
+    "arabic",
+    "rtl",
+    "hostinger"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

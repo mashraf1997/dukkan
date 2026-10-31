@@ -1,0 +1,17 @@
+# One-click deploy on a Hostinger VPS (Docker Manager), or anywhere with Docker:
+#   docker compose up -d
+# Then open http://YOUR-SERVER-IP and finish the 1-minute setup.
+services:
+  dukkan:
+    image: ghcr.io/mashraf1997/dukkan:latest
+    container_name: dukkan
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - dukkan-data:/data
+
+volumes:
+  dukkan-data:
