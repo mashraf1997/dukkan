@@ -1,17 +1,42 @@
-# One-click deploy on a Hostinger VPS (Docker Manager), or anywhere with Docker:
+# Dukkan — one-click deploy on a Hostinger VPS (Docker Manager), or anywhere with Docker.
+#
 #   docker compose up -d
-# Then open http://YOUR-SERVER-IP and finish the 1-minute setup.
+#
+# Optional environment variables (set them in Hostinger's Docker Manager or a .env file):
+#   DOMAIN       Your domain, e.g. shop.example.com. Point its DNS A record at this server
+#                and Caddy will get a free HTTPS certificate automatically.
+#                Leave empty to serve plain HTTP on the server's IP.
+#   SETUP_CODE   Code required to create the admin account on first launch.
+#                If empty, a random code is printed in the dukkan container logs.
+#   DEMO_MODE    "true" turns the install into a public, self-resetting demo.
 services:
   dukkan:
     image: ghcr.io/mashraf1997/dukkan:latest
-    container_name: dukkan
     restart: unless-stopped
-    ports:
-      - "80:3000"
     environment:
       - NODE_ENV=production
+      - SETUP_CODE=${SETUP_CODE:-}
+      - DEMO_MODE=${DEMO_MODE:-false}
     volumes:
       - dukkan-data:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - dukkan
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    command: caddy reverse-proxy --from ${DOMAIN:-:80} --to dukkan:3000
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
 
 volumes:
   dukkan-data:
+  caddy-data:
+  caddy-config:

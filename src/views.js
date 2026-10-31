@@ -79,7 +79,20 @@ function renderProduct(p, s, t) {
 </article>`;
 }
 
-function renderStore({ settings: s, categories, products, lang, table, baseUrl }) {
+function renderStore({
+  settings: s,
+  categories,
+  products,
+  lang,
+  table,
+  baseUrl,
+  canOrder = !!s.acceptingOrders,
+  closedBySchedule = false,
+  opensAt = '',
+  hasCoupons = false,
+  demo = false,
+  languages = [],
+}) {
   const t = strings(lang);
   const color = safeColor(s.color);
   const cover = safeUrl(s.cover);
@@ -95,8 +108,17 @@ function renderStore({ settings: s, categories, products, lang, table, baseUrl }
   const loose = visible.filter((p) => !catIds.has(p.categoryId));
   if (loose.length) sections.push({ id: 'other', name: sections.length ? '…' : '', items: loose });
 
-  const otherLang = lang === 'ar' ? 'en' : 'ar';
-  const qsTable = table ? `&table=${encodeURIComponent(table)}` : '';
+  const langMenu = languages.length > 1
+    ? `<label class="lang"><span aria-hidden="true">🌐</span><select id="lang" aria-label="${esc(t.language)}">${languages
+        .map((l) => `<option value="${esc(l.code)}"${l.code === lang ? ' selected' : ''}>${esc(l.name)}</option>`)
+        .join('')}</select></label>`
+    : '';
+  let closedText = '';
+  if (!canOrder) {
+    closedText = closedBySchedule
+      ? `${t.closedNow}${opensAt ? ` · ${t.opensAt.replace('{time}', opensAt)}` : ''}`
+      : s.closedMessage || t.closed;
+  }
   const methods = enabledMethods(s);
 
   const contactLinks = [
@@ -119,7 +141,10 @@ function renderStore({ settings: s, categories, products, lang, table, baseUrl }
       freeDeliveryOver: Number(s.freeDeliveryOver) || 0,
       minOrder: Number(s.minOrder) || 0,
       methods,
-      acceptingOrders: !!s.acceptingOrders,
+      acceptingOrders: canOrder,
+      closedText,
+      zones: s.delivery ? (s.zones || []).map((z) => ({ id: z.id, name: z.name, fee: Number(z.fee) || 0 })) : [],
+      hasCoupons,
     },
     products: visible.map((p) => ({
       id: p.id,
@@ -159,6 +184,7 @@ function renderStore({ settings: s, categories, products, lang, table, baseUrl }
 <meta property="og:title" content="${esc(s.name)}">
 <meta property="og:description" content="${esc(description)}">
 ${ogImage ? `<meta property="og:image" content="${esc(baseUrl + ogImage.replace(/^\//, ''))}">` : ''}
+${languages.map((l) => `<link rel="alternate" hreflang="${esc(l.code)}" href="${esc(baseUrl)}?lang=${esc(l.code)}">`).join('\n')}
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="${logo ? esc(logo) : '/img/icon.svg'}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -171,7 +197,7 @@ ${ogImage ? `<meta property="og:image" content="${esc(baseUrl + ogImage.replace(
 <body>
 <header class="hero${cover ? ' has-cover' : ''}"${cover ? ` style="--cover:url('${esc(cover)}')"` : ''}>
   <div class="hero-top">
-    <a class="lang" href="?lang=${otherLang}${qsTable}" hreflang="${otherLang}">${esc(strings(otherLang).langName)}</a>
+    ${langMenu}
   </div>
   <div class="hero-body">
     <div class="logo">${logo ? `<img src="${esc(logo)}" alt="">` : `<span>${esc(initials(s.name))}</span>`}</div>
@@ -184,7 +210,8 @@ ${ogImage ? `<meta property="og:image" content="${esc(baseUrl + ogImage.replace(
     </div>
   </div>
 </header>
-${s.acceptingOrders ? '' : `<div class="closed-banner" role="status">⏸️ ${esc(s.closedMessage || t.closed)}</div>`}
+${demo ? `<div class="demo-banner" role="note">🧪 ${esc(t.demoBanner)}</div>` : ''}
+${canOrder ? '' : `<div class="closed-banner" role="status">⏸️ ${esc(closedText)}</div>`}
 <nav class="toolbar" aria-label="Menu">
   <div class="search"><input id="q" type="search" placeholder="${esc(t.search)}" autocomplete="off" aria-label="${esc(t.search)}"></div>
   ${sections.length > 1 ? `<div class="chips" id="chips">${sections

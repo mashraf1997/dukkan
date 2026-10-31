@@ -198,9 +198,9 @@ h3 { margin: 0 0 12px; font-size: 17px; }
 .img-pick .preview { width: 84px; height: 84px; border-radius: 14px; background: var(--bg); display: grid; place-items: center; overflow: hidden; font-size: 36px; flex: none; border: 1px dashed var(--line); }
 .img-pick .preview img { width: 100%; height: 100%; object-fit: cover; }
 .img-pick .preview.wide { width: 160px; }
-.variants .vrow { display: flex; gap: 8px; margin-bottom: 8px; }
-.variants .vrow input { flex: 1; min-width: 0; }
-.variants .vrow input.price { flex: 0 0 110px; }
+.vrow { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.vrow input { flex: 1; min-width: 0; }
+.vrow input.price { flex: 0 0 110px; }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .swatches button { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
 .swatches button.active { box-shadow: 0 0 0 2px var(--text); }
@@ -218,3 +218,29 @@ h3 { margin: 0 0 12px; font-size: 17px; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.bad { background: var(--danger); }
+
+/* ---------- language menu, demo ---------- */
+.lang-select {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 10px;
+  padding: 6px 10px; font-weight: 600; font-size: 13.5px; cursor: pointer; max-width: 140px;
+}
+.demo-bar { background: #eef2ff; color: #3730a3; text-align: center; padding: 6px 12px; font-size: 13.5px; }
+.demo-note { background: #eef2ff; color: #3730a3; border-radius: 12px; padding: 8px 12px; text-align: center; font-size: 14px; }
+
+/* ---------- schedule ---------- */
+.sched-grid { display: grid; gap: 8px; }
+.sched-row { display: grid; grid-template-columns: minmax(90px, 1fr) auto 1fr auto 1fr; gap: 10px; align-items: center; }
+.sched-row .sched-day { font-weight: 700; }
+.sched-row input[type=time] { padding: 8px 10px; }
+.sched-row input:disabled { opacity: .4; }
+@media (max-width: 560px) {
+  .sched-row { grid-template-columns: 1fr auto; }
+  .sched-row input[type=time] { grid-column: span 1; }
+  .sched-row > span.muted { display: none; }
+}
+
+/* ---------- coupons ---------- */
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); border: 1px dashed var(--line); padding: 2px 8px; border-radius: 8px; font-weight: 700; }
+.coupon-form { display: grid; grid-template-columns: 1.2fr 1.3fr .7fr .8fr .8fr auto; gap: 0 10px; align-items: end; margin-top: 14px; }
+.coupon-form .btn { margin-bottom: 14px; }
+@media (max-width: 900px) { .coupon-form { grid-template-columns: 1fr 1fr; } }

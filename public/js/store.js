@@ -58,9 +58,14 @@
   };
   const subtotal = () => cart.reduce((s, l) => s + unitPrice(l) * l.qty, 0);
   const count = () => cart.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = (method, sub) => {
+  const findZone = (id) => shop.zones.find((z) => z.id === id) || null;
+  const deliveryFee = (method, sub, zoneId) => {
     if (method !== 'delivery') return 0;
     if (shop.freeDeliveryOver > 0 && sub >= shop.freeDeliveryOver) return 0;
+    if (shop.zones.length) {
+      const z = findZone(zoneId);
+      return z ? z.fee : 0;
+    }
     return shop.deliveryFee;
   };
 
@@ -187,6 +192,8 @@
     const saved = storage.get(CUSTOMER_KEY, {});
     let method = shop.methods.includes(saved.method) ? saved.method : shop.methods[0];
     if (D.table && shop.methods.includes('dineIn')) method = 'dineIn';
+    let zoneId = findZone(saved.zone) ? saved.zone : '';
+    let coupon = null; // { code, discount }
 
     const html = `
       <h2 id="sheet-title">${esc(t.cart)}</h2>
@@ -200,9 +207,17 @@
         <form id="form" novalidate>
           <label class="field"><span>${esc(t.yourName)} *</span><input name="name" autocomplete="name" required maxlength="80" value="${esc(saved.name || '')}"></label>
           <label class="field" data-for="delivery pickup"><span>${esc(t.yourPhone)} *</span><input name="phone" type="tel" autocomplete="tel" maxlength="30" value="${esc(saved.phone || '')}"></label>
+          ${shop.zones.length
+            ? `<label class="field" data-for="delivery"><span>${esc(t.zone)} *</span><select name="zone"><option value="">${esc(t.chooseZone)}</option>${shop.zones
+                .map((z) => `<option value="${esc(z.id)}" ${z.id === zoneId ? 'selected' : ''}>${esc(z.name)}${z.fee ? ` (+${esc(money(z.fee))})` : ''}</option>`)
+                .join('')}</select></label>`
+            : ''}
           <label class="field" data-for="delivery"><span>${esc(t.address)} *</span><textarea name="address" rows="2" autocomplete="street-address" maxlength="300">${esc(saved.address || '')}</textarea></label>
           <label class="field" data-for="dineIn"><span>${esc(t.table)} *</span><input name="table" inputmode="numeric" maxlength="20" value="${esc(D.table || '')}"></label>
           <label class="field"><span>${esc(t.notes)}</span><textarea name="notes" rows="2" maxlength="500"></textarea></label>
+          ${shop.hasCoupons
+            ? `<div class="field"><span>${esc(t.coupon)}</span><div class="coupon-row"><input id="coupon" maxlength="30" autocomplete="off" autocapitalize="characters"><button type="button" id="apply-coupon">${esc(t.apply)}</button></div><div class="coupon-msg" id="coupon-msg"></div></div>`
+            : ''}
           <div class="summary" id="summary"></div>
           <div id="minwarn"></div>
           <button class="btn wa" type="submit" id="send">
@@ -240,16 +255,57 @@
           })
           .join('');
         const sub = subtotal();
-        const fee = deliveryFee(method, sub);
+        const fee = deliveryFee(method, sub, zoneId);
+        const disc = coupon ? coupon.discount : 0;
+        const pendingZone = method === 'delivery' && shop.zones.length && !zoneId;
         $('#summary', root).innerHTML = `
           <div><span>${esc(t.subtotal)}</span><span>${esc(money(sub))}</span></div>
-          ${method === 'delivery' ? `<div><span>${esc(t.deliveryFee)}</span><span>${fee ? esc(money(fee)) : esc(t.free)}</span></div>` : ''}
-          <div class="total"><span>${esc(t.total)}</span><span>${esc(money(sub + fee))}</span></div>`;
+          ${disc ? `<div class="disc"><span>${esc(t.discount)} (${esc(coupon.code)})</span><span>−${esc(money(disc))}</span></div>` : ''}
+          ${method === 'delivery' ? `<div><span>${esc(t.deliveryFee)}</span><span>${pendingZone ? '—' : fee ? esc(money(fee)) : esc(t.free)}</span></div>` : ''}
+          <div class="total"><span>${esc(t.total)}</span><span>${esc(money(sub - disc + fee))}</span></div>`;
         const below = shop.minOrder > 0 && sub < shop.minOrder;
         $('#minwarn', root).innerHTML = below ? `<p class="warn">${esc(t.minOrder)}: ${esc(money(shop.minOrder))}</p>` : '';
         $('#send', root).disabled = below || !shop.acceptingOrders;
-        if (!shop.acceptingOrders) $('#err', root).textContent = t.closed;
+        if (!shop.acceptingOrders) $('#err', root).textContent = shop.closedText || t.closed;
       };
+
+      // Discount codes are checked (and priced) by the server.
+      const checkCoupon = async (code, quiet) => {
+        const msg = $('#coupon-msg', root);
+        if (!code) {
+          coupon = null;
+          msg.textContent = '';
+          return renderLines();
+        }
+        try {
+          const res = await fetch('/api/coupon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Dukkan': '1' },
+            body: JSON.stringify({ code, items: cart.map((l) => ({ id: l.id, variant: l.variant, qty: l.qty })) }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw Object.assign(new Error(data.error), { data });
+          coupon = { code: data.code, discount: data.discount };
+          msg.className = 'coupon-msg ok';
+          msg.textContent = `✓ ${t.couponApplied}: −${money(data.discount)}`;
+        } catch (ex) {
+          coupon = null;
+          msg.className = 'coupon-msg bad';
+          const d = ex.data || {};
+          msg.textContent = d.error === 'coupon_min_order' ? `${t.minOrder}: ${money(d.minOrder)}` : quiet ? '' : t.couponInvalid;
+        }
+        renderLines();
+      };
+      const couponBtn = $('#apply-coupon', root);
+      if (couponBtn) {
+        couponBtn.addEventListener('click', () => checkCoupon($('#coupon', root).value.trim()));
+        $('#coupon', root).addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            checkCoupon(e.target.value.trim());
+          }
+        });
+      }
 
       root.addEventListener('click', (e) => {
         const b = e.target.closest('[data-line]');
@@ -259,12 +315,18 @@
         if (line.qty <= 0) cart.splice(Number(b.dataset.line), 1);
         saveCart();
         renderLines();
+        if (coupon && cart.length) checkCoupon(coupon.code, true);
       });
 
       root.addEventListener('change', (e) => {
+        if (['method', 'zone'].includes(e.target.name)) $('#err', root).textContent = '';
         if (e.target.name === 'method') {
           method = e.target.value;
           applyMethod();
+          renderLines();
+        }
+        if (e.target.name === 'zone') {
+          zoneId = e.target.value;
           renderLines();
         }
       });
@@ -278,9 +340,10 @@
         if (method !== 'dineIn') need.push('phone');
         if (method === 'delivery') need.push('address');
         if (method === 'dineIn') need.push('table');
+        if (method === 'delivery' && shop.zones.length) need.push('zone');
         const missing = need.find((k) => !String(f[k] || '').trim());
         if (missing) {
-          err.textContent = `${t.required}: ${t[{ name: 'yourName', phone: 'yourPhone', address: 'address', table: 'table' }[missing]]}`;
+          err.textContent = `${t.required}: ${t[{ name: 'yourName', phone: 'yourPhone', address: 'address', table: 'table', zone: 'zone' }[missing]]}`;
           form.elements[missing].focus();
           return;
         }
@@ -296,12 +359,14 @@
               items: cart.map((l) => ({ id: l.id, variant: l.variant, qty: l.qty })),
               method,
               table: f.table,
+              zone: method === 'delivery' ? zoneId : '',
+              coupon: coupon ? coupon.code : '',
               customer: { name: f.name, phone: f.phone, address: f.address, notes: f.notes },
             }),
           });
           const data = await res.json();
           if (!res.ok) throw Object.assign(new Error(data.error), { code: data.error });
-          storage.set(CUSTOMER_KEY, { name: f.name, phone: f.phone, address: f.address, method });
+          storage.set(CUSTOMER_KEY, { name: f.name, phone: f.phone, address: f.address, method, zone: zoneId });
           cart = [];
           saveCart();
           showDone(data);
@@ -311,7 +376,13 @@
           if (win) win.opener = null;
           else window.location.href = data.whatsappUrl;
         } catch (ex) {
-          const messages = { closed: t.closed, below_minimum: `${t.minOrder}: ${money(shop.minOrder)}` };
+          const messages = {
+            closed: shop.closedText || t.closed,
+            below_minimum: `${t.minOrder}: ${money(shop.minOrder)}`,
+            zone_required: `${t.required}: ${t.zone}`,
+            invalid_coupon: t.couponInvalid,
+            coupon_min_order: t.couponInvalid,
+          };
           err.textContent = messages[ex.code] || t.errorGeneric;
           if (ex.code === 'unavailable' || ex.code === 'invalid_variant') setTimeout(() => location.reload(), 1500);
           btn.disabled = false;
@@ -394,6 +465,16 @@
       { rootMargin: '-140px 0px -60% 0px' }
     );
     $$('.cat').forEach((s) => io.observe(s));
+  }
+
+  // Language menu keeps other query params (e.g. ?table=4).
+  const langSel = $('#lang');
+  if (langSel) {
+    langSel.addEventListener('change', () => {
+      const url = new URL(location.href);
+      url.searchParams.set('lang', langSel.value);
+      location.href = url.toString();
+    });
   }
 
   renderCartBar();

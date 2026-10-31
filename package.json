@@ -1,7 +1,7 @@
 {
   "name": "dukkan",
-  "version": "1.0.0",
-  "description": "Your own WhatsApp ordering store in 2 minutes. Self-hosted menu & catalog with QR codes, Arabic/English, zero commissions.",
+  "version": "1.1.0",
+  "description": "Your own WhatsApp ordering store in 2 minutes. Self-hosted menu & catalog with QR codes, 8 languages, discount codes, opening hours, zero commissions.",
   "main": "server.js",
   "license": "MIT",
   "author": "mashraf1997",
@@ -19,7 +19,11 @@
     "self-hosted",
     "arabic",
     "rtl",
-    "hostinger"
+    "hostinger",
+    "multilingual",
+    "coupons",
+    "qr-code",
+    "csv-import"
   ],
   "engines": {
     "node": ">=18"

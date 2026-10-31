@@ -1,127 +1,33 @@
 'use strict';
 
-// Interface strings. Shop content (product names etc.) is written by the owner.
-const STRINGS = {
-  ar: {
-    dir: 'rtl',
-    langName: 'العربية',
-    // storefront
-    search: 'ابحث في المنيو…',
-    all: 'الكل',
-    addToCart: 'أضف للسلة',
-    add: 'أضف',
-    soldOut: 'نفدت الكمية',
-    featured: 'الأكثر طلبًا',
-    viewCart: 'عرض السلة',
-    items: 'منتج',
-    cart: 'سلتك',
-    emptyCart: 'السلة فاضية. اختار حاجة حلوة من المنيو 😋',
-    subtotal: 'المجموع',
-    deliveryFee: 'التوصيل',
-    free: 'مجانًا',
-    total: 'الإجمالي',
-    orderMethod: 'طريقة الاستلام',
-    delivery: 'توصيل',
-    pickup: 'استلام من المحل',
-    dineIn: 'في المحل',
-    yourName: 'الاسم',
-    yourPhone: 'رقم الموبايل',
-    address: 'العنوان بالتفصيل',
-    table: 'رقم الترابيزة',
-    notes: 'ملاحظات (اختياري)',
-    sendOrder: 'إرسال الطلب على واتساب',
-    sending: 'جاري الإرسال…',
-    chooseOption: 'اختار',
-    required: 'مطلوب',
-    minOrder: 'الحد الأدنى للطلب',
-    freeDeliveryOver: 'توصيل مجاني للطلبات فوق',
-    closed: 'المحل مش بيستقبل طلبات دلوقتي',
-    orderSent: 'تم تسجيل طلبك!',
-    orderSentHint: 'لو واتساب ما فتحش تلقائيًا، اضغط الزرار ده عشان تبعت الطلب.',
-    openWhatsApp: 'افتح واتساب',
-    orderNo: 'طلب رقم',
-    backToMenu: 'رجوع للمنيو',
-    contact: 'تواصل معنا',
-    hours: 'مواعيد العمل',
-    poweredBy: 'متجر مجاني ومفتوح المصدر بواسطة',
-    noProducts: 'لسه مفيش منتجات هنا.',
-    noResults: 'مفيش نتايج.',
-    qty: 'الكمية',
-    remove: 'حذف',
-    yourTable: 'ترابيزة',
-    errorGeneric: 'حصلت مشكلة، حاول تاني.',
-    from: 'من',
-    scanToOrder: 'امسح الكود واطلب',
-    rememberMe: 'هنفتكر بياناتك للمرة الجاية',
-    // WhatsApp message
-    msgNewOrder: 'طلب جديد',
-    msgCustomer: 'العميل',
-    msgPhone: 'الموبايل',
-    msgAddress: 'العنوان',
-    msgNotes: 'ملاحظات',
-    msgTable: 'ترابيزة',
-  },
-  en: {
-    dir: 'ltr',
-    langName: 'English',
-    search: 'Search the menu…',
-    all: 'All',
-    addToCart: 'Add to cart',
-    add: 'Add',
-    soldOut: 'Sold out',
-    featured: 'Popular',
-    viewCart: 'View cart',
-    items: 'items',
-    cart: 'Your cart',
-    emptyCart: 'Your cart is empty. Pick something tasty 😋',
-    subtotal: 'Subtotal',
-    deliveryFee: 'Delivery',
-    free: 'Free',
-    total: 'Total',
-    orderMethod: 'How would you like it?',
-    delivery: 'Delivery',
-    pickup: 'Pickup',
-    dineIn: 'Dine-in',
-    yourName: 'Name',
-    yourPhone: 'Phone number',
-    address: 'Full address',
-    table: 'Table number',
-    notes: 'Notes (optional)',
-    sendOrder: 'Send order on WhatsApp',
-    sending: 'Sending…',
-    chooseOption: 'Choose',
-    required: 'Required',
-    minOrder: 'Minimum order',
-    freeDeliveryOver: 'Free delivery over',
-    closed: "We're not taking orders right now",
-    orderSent: 'Order placed!',
-    orderSentHint: "If WhatsApp didn't open automatically, tap the button to send your order.",
-    openWhatsApp: 'Open WhatsApp',
-    orderNo: 'Order',
-    backToMenu: 'Back to menu',
-    contact: 'Contact us',
-    hours: 'Opening hours',
-    poweredBy: 'Free & open-source store by',
-    noProducts: 'No products here yet.',
-    noResults: 'No results.',
-    qty: 'Qty',
-    remove: 'Remove',
-    yourTable: 'Table',
-    errorGeneric: 'Something went wrong, please try again.',
-    from: 'from',
-    scanToOrder: 'Scan to order',
-    rememberMe: "We'll remember your details for next time",
-    msgNewOrder: 'New order',
-    msgCustomer: 'Customer',
-    msgPhone: 'Phone',
-    msgAddress: 'Address',
-    msgNotes: 'Notes',
-    msgTable: 'Table',
-  },
-};
+// Translations live in /locales/<code>.json. Adding a language = adding a file.
+const fs = require('node:fs');
+const path = require('node:path');
 
-function strings(lang) {
-  return STRINGS[lang] || STRINGS.en;
+const DIR = path.join(__dirname, '..', 'locales');
+const LOCALES = {};
+for (const file of fs.readdirSync(DIR).sort()) {
+  if (!file.endsWith('.json')) continue;
+  LOCALES[path.basename(file, '.json')] = JSON.parse(fs.readFileSync(path.join(DIR, file), 'utf8'));
 }
 
-module.exports = { STRINGS, strings, LANGS: Object.keys(STRINGS) };
+// English first, Arabic second, then alphabetical by code.
+const LANGS = Object.keys(LOCALES).sort((a, b) => {
+  const rank = (c) => (c === 'en' ? 0 : c === 'ar' ? 1 : 2);
+  return rank(a) - rank(b) || a.localeCompare(b);
+});
+
+const LANGUAGES = LANGS.map((code) => ({ code, name: LOCALES[code].meta.name, dir: LOCALES[code].meta.dir }));
+
+// Storefront strings (plus dir/langName), falling back to English for any missing key.
+function strings(lang) {
+  const loc = LOCALES[lang] || LOCALES.en;
+  return { ...LOCALES.en.store, ...loc.store, dir: loc.meta.dir, langName: loc.meta.name };
+}
+
+function adminStrings(lang) {
+  const loc = LOCALES[lang] || LOCALES.en;
+  return { ...LOCALES.en.admin, ...loc.admin, dir: loc.meta.dir };
+}
+
+module.exports = { strings, adminStrings, LANGS, LANGUAGES };

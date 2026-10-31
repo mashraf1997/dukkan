@@ -2,105 +2,21 @@
   'use strict';
 
   // ======================= i18n =======================
-  const L = {
-    ar: {
-      dir: 'rtl', other: 'English',
-      save: 'حفظ', saved: 'تم الحفظ ✓', cancel: 'إلغاء', del: 'حذف', edit: 'تعديل', add: 'إضافة',
-      confirmDelete: 'متأكد إنك عايز تحذف؟', error: 'حصلت مشكلة، حاول تاني', copy: 'نسخ', copied: 'اتنسخ ✓',
-      viewStore: 'شوف المتجر', logout: 'خروج',
-      setupTitle: 'يلا نفتح دكّانك 🏪', setupSub: 'دقيقة واحدة وهيبقى عندك متجر بيستقبل طلبات على واتساب.',
-      shopName: 'اسم المحل', whatsapp: 'رقم واتساب لاستقبال الطلبات', whatsappHint: 'بكود الدولة، مثال: 201001234567',
-      currency: 'العملة', defaultLang: 'لغة المتجر', password: 'كلمة سر لوحة التحكم', passwordHint: '8 حروف على الأقل',
-      sampleMenu: 'ابدأ بمنيو تجريبي', sampleHint: 'تقدر تعدّله أو تمسحه بعدين', openShop: 'افتح المحل 🚀',
-      weakPassword: 'كلمة السر لازم تكون 8 حروف على الأقل',
-      loginTitle: 'أهلًا بيك تاني 👋', loginSub: 'ادخل كلمة السر عشان تدير متجرك', login: 'دخول',
-      wrongPassword: 'كلمة السر غلط', rateLimited: 'محاولات كتير، استنى شوية وحاول تاني',
-      home: 'الرئيسية', orders: 'الطلبات', menu: 'المنيو', settings: 'الإعدادات', share: 'المشاركة',
-      today: 'طلبات النهارده', week: 'آخر 7 أيام', month: 'مبيعات 30 يوم', avgOrder: 'متوسط الطلب',
-      ordersWord: 'طلب', last14: 'الطلبات في آخر 14 يوم', topProducts: 'الأكثر مبيعًا (30 يوم)', noData: 'لسه مفيش بيانات. شارك اللينك وابدأ!',
-      accepting: 'استقبال الطلبات', acceptingOn: 'المحل مفتوح وبيستقبل طلبات', acceptingOff: 'المحل مقفول — العملاء يقدروا يتفرجوا بس',
-      open: 'مفتوح', closed: 'مقفول', yourLink: 'لينك متجرك',
-      getStarted: 'خطوات البداية', stepWhatsapp: 'ضيف رقم واتساب', stepProducts: 'ضيف منتجاتك', stepLogo: 'ارفع اللوجو', stepShare: 'اطبع الـ QR وشارك اللينك',
-      all: 'الكل', st_new: 'جديد', st_confirmed: 'مؤكد', st_completed: 'مكتمل', st_cancelled: 'ملغي',
-      noOrders: 'مفيش طلبات هنا لسه', markConfirmed: 'تأكيد', markCompleted: 'تم ✓', markCancelled: 'إلغاء الطلب', reopen: 'إرجاع',
-      chatCustomer: 'كلّم العميل', table: 'ترابيزة', delivery: 'توصيل', pickup: 'استلام', dineIn: 'في المحل',
-      notes: 'ملاحظات', address: 'العنوان', deliveryFee: 'التوصيل', total: 'الإجمالي', newOrderAlert: '🔔 طلب جديد!',
-      categories: 'الأقسام', addCategory: 'قسم جديد', categoryName: 'اسم القسم', products: 'المنتجات', addProduct: 'منتج جديد',
-      editProduct: 'تعديل المنتج', noProductsYet: 'لسه مفيش منتجات. ضيف أول منتج!', uncategorized: 'بدون قسم',
-      name: 'الاسم', category: 'القسم', description: 'الوصف', price: 'السعر', comparePrice: 'السعر قبل الخصم',
-      comparePriceHint: 'اختياري — بيظهر مشطوب جنب السعر', variants: 'أحجام / اختيارات', variantsHint: 'مثال: صغير، وسط، كبير — كل واحد بسعره. سيبها فاضية لو مفيش.',
-      addVariant: '+ اختيار', variantName: 'مثلًا: كبير', image: 'الصورة', uploadImage: 'ارفع صورة', removeImage: 'شيل الصورة',
-      orEmoji: 'أو إيموجي', available: 'متاح', featured: 'مميّز (الأكثر طلبًا)', up: 'لفوق', down: 'لتحت', rename: 'اسم جديد للقسم',
-      noCategories: 'الأقسام بتنظم المنيو (مثلًا: مشروبات، حلويات)', uploading: 'جاري الرفع…',
-      storeInfo: 'بيانات المحل', tagline: 'جملة تعريفية', about: 'عن المحل', logo: 'اللوجو', cover: 'صورة الغلاف',
-      brandColor: 'لون المتجر', ordering: 'الطلبات والتوصيل', acceptingOrders: 'استقبال الطلبات مفعّل',
-      closedMessage: 'رسالة وقت القفل', closedMessagePh: 'مثلًا: هنرجع بكرة الساعة 9 الصبح',
-      deliveryOn: 'توصيل', deliveryFeeL: 'رسوم التوصيل', freeDeliveryOver: 'توصيل مجاني فوق', freeHint: '0 = مفيش', minOrder: 'الحد الأدنى للطلب',
-      pickupOn: 'استلام من المحل', dineInOn: 'طلب من الترابيزة (QR لكل ترابيزة)', contact: 'التواصل والسوشيال',
-      phone: 'رقم التليفون', addressL: 'العنوان', mapUrl: 'لينك جوجل ماب', hours: 'مواعيد العمل',
-      security: 'الأمان', currentPassword: 'كلمة السر الحالية', newPassword: 'كلمة السر الجديدة', changePassword: 'غيّر كلمة السر',
-      passwordChanged: 'تم تغيير كلمة السر ✓', backup: 'نسخة احتياطية', backupHint: 'نزّل كل بياناتك في ملف واحد، أو رجّعها على سيرفر جديد.',
-      exportData: '⬇️ تنزيل نسخة', importData: '⬆️ استرجاع نسخة', importConfirm: 'ده هيستبدل المنيو والإعدادات الحالية. متأكد؟', imported: 'تم الاسترجاع ✓',
-      shareTitle: 'شارك متجرك', shareSub: 'حط الـ QR على الترابيزات والباب والكاشير، وشارك اللينك في الستوري.',
-      downloadQr: '⬇️ تنزيل QR', printPosters: '🖨️ اطبع بوسترات QR', tables: 'عدد الترابيزات', tablesHint: 'كل ترابيزة بتاخد QR خاص، والطلب بيوصلك فيه رقم الترابيزة.',
-      shareWhatsApp: 'شارك على واتساب', shareText: 'اطلب من {name} أونلاين بسهولة 👇',
-      tipsTitle: 'أفكار تزوّد طلباتك', tip1: 'حط اللينك في البايو بتاع إنستجرام وتيك توك.', tip2: 'علّم 2-3 منتجات كـ "مميّز" — بيتطلبوا أكتر.', tip3: 'الصور الحقيقية بتزوّد الطلبات. صوّر في إضاءة النهار.', tip4: 'اعمل "توصيل مجاني فوق" مبلغ معيّن عشان تكبّر قيمة الطلب.',
-      tooLarge: 'الصورة كبيرة قوي', invalidBackup: 'الملف ده مش نسخة دكّان صالحة',
-    },
-    en: {
-      dir: 'ltr', other: 'العربية',
-      save: 'Save', saved: 'Saved ✓', cancel: 'Cancel', del: 'Delete', edit: 'Edit', add: 'Add',
-      confirmDelete: 'Are you sure you want to delete this?', error: 'Something went wrong, try again', copy: 'Copy', copied: 'Copied ✓',
-      viewStore: 'View store', logout: 'Log out',
-      setupTitle: "Let's open your shop 🏪", setupSub: "One minute and you'll have a store taking orders on WhatsApp.",
-      shopName: 'Shop name', whatsapp: 'WhatsApp number for orders', whatsappHint: 'With country code, e.g. 14155550123',
-      currency: 'Currency', defaultLang: 'Store language', password: 'Admin password', passwordHint: 'At least 8 characters',
-      sampleMenu: 'Start with a sample menu', sampleHint: 'You can edit or delete it later', openShop: 'Open my shop 🚀',
-      weakPassword: 'Password must be at least 8 characters',
-      loginTitle: 'Welcome back 👋', loginSub: 'Enter your password to manage your store', login: 'Log in',
-      wrongPassword: 'Wrong password', rateLimited: 'Too many attempts, please wait a bit',
-      home: 'Home', orders: 'Orders', menu: 'Menu', settings: 'Settings', share: 'Share',
-      today: "Today's orders", week: 'Last 7 days', month: '30-day sales', avgOrder: 'Avg. order',
-      ordersWord: 'orders', last14: 'Orders, last 14 days', topProducts: 'Best sellers (30 days)', noData: 'No data yet. Share your link and get going!',
-      accepting: 'Accepting orders', acceptingOn: 'Your shop is open and taking orders', acceptingOff: 'Shop closed — customers can browse only',
-      open: 'Open', closed: 'Closed', yourLink: 'Your store link',
-      getStarted: 'Getting started', stepWhatsapp: 'Add your WhatsApp number', stepProducts: 'Add your products', stepLogo: 'Upload your logo', stepShare: 'Print your QR & share your link',
-      all: 'All', st_new: 'New', st_confirmed: 'Confirmed', st_completed: 'Completed', st_cancelled: 'Cancelled',
-      noOrders: 'No orders here yet', markConfirmed: 'Confirm', markCompleted: 'Done ✓', markCancelled: 'Cancel order', reopen: 'Reopen',
-      chatCustomer: 'Chat with customer', table: 'Table', delivery: 'Delivery', pickup: 'Pickup', dineIn: 'Dine-in',
-      notes: 'Notes', address: 'Address', deliveryFee: 'Delivery', total: 'Total', newOrderAlert: '🔔 New order!',
-      categories: 'Categories', addCategory: 'New category', categoryName: 'Category name', products: 'Products', addProduct: 'New product',
-      editProduct: 'Edit product', noProductsYet: 'No products yet. Add your first one!', uncategorized: 'Uncategorized',
-      name: 'Name', category: 'Category', description: 'Description', price: 'Price', comparePrice: 'Price before discount',
-      comparePriceHint: 'Optional — shown struck-through next to the price', variants: 'Sizes / options', variantsHint: 'e.g. Small, Medium, Large — each with its own price. Leave empty if none.',
-      addVariant: '+ Option', variantName: 'e.g. Large', image: 'Photo', uploadImage: 'Upload photo', removeImage: 'Remove photo',
-      orEmoji: 'or an emoji', available: 'Available', featured: 'Featured (popular)', up: 'Move up', down: 'Move down', rename: 'New category name',
-      noCategories: 'Categories organise your menu (e.g. Drinks, Desserts)', uploading: 'Uploading…',
-      storeInfo: 'Store info', tagline: 'Tagline', about: 'About', logo: 'Logo', cover: 'Cover photo',
-      brandColor: 'Brand colour', ordering: 'Orders & delivery', acceptingOrders: 'Accepting orders',
-      closedMessage: 'Message while closed', closedMessagePh: "e.g. We're back tomorrow at 9am",
-      deliveryOn: 'Delivery', deliveryFeeL: 'Delivery fee', freeDeliveryOver: 'Free delivery over', freeHint: '0 = off', minOrder: 'Minimum order',
-      pickupOn: 'Pickup', dineInOn: 'Order from table (QR per table)', contact: 'Contact & social',
-      phone: 'Phone', addressL: 'Address', mapUrl: 'Google Maps link', hours: 'Opening hours',
-      security: 'Security', currentPassword: 'Current password', newPassword: 'New password', changePassword: 'Change password',
-      passwordChanged: 'Password changed ✓', backup: 'Backup', backupHint: 'Download all your data as one file, or restore it on a new server.',
-      exportData: '⬇️ Download backup', importData: '⬆️ Restore backup', importConfirm: 'This replaces your current menu and settings. Continue?', imported: 'Restored ✓',
-      shareTitle: 'Share your store', shareSub: 'Put the QR on tables, the door and the counter, and share your link on stories.',
-      downloadQr: '⬇️ Download QR', printPosters: '🖨️ Print QR posters', tables: 'Number of tables', tablesHint: 'Each table gets its own QR, and orders arrive with the table number.',
-      shareWhatsApp: 'Share on WhatsApp', shareText: 'Order from {name} online 👇',
-      tipsTitle: 'Ideas to get more orders', tip1: 'Put your link in your Instagram & TikTok bio.', tip2: 'Mark 2–3 items as “Featured” — they sell more.', tip3: 'Real photos sell. Shoot in daylight.', tip4: 'Set “free delivery over” an amount to grow basket size.',
-      tooLarge: 'Image is too large', invalidBackup: "That file isn't a valid Dukkan backup",
-    },
-  };
-
+  // Strings come from /locales/<lang>.json via the server.
   const LANG_KEY = 'dukkan-admin-lang';
   let lang = (() => {
     try { return localStorage.getItem(LANG_KEY); } catch { return null; }
   })();
-  const T = (k) => (L[lang] || L.ar)[k] || L.en[k] || k;
+  let S = {};
+  let LANGUAGES = [{ code: 'en', name: 'English' }];
+  const T = (k) => S[k] || k;
 
-  function setLang(next) {
-    lang = L[next] ? next : 'ar';
+  async function setLang(next) {
+    const res = await fetch(`/api/i18n/${encodeURIComponent(next || 'en')}`);
+    const data = await res.json();
+    S = data.strings;
+    LANGUAGES = data.languages;
+    lang = LANGUAGES.some((l) => l.code === next) ? next : 'en';
     try { localStorage.setItem(LANG_KEY, lang); } catch { /* ignore */ }
     document.documentElement.lang = lang;
     document.documentElement.dir = T('dir');
@@ -197,59 +113,76 @@
   }
 
   // ======================= boot / auth =======================
+  let demo = null;
+
   async function boot() {
     let s;
     try {
       s = await api('GET', '/api/state');
     } catch {
-      app.innerHTML = `<div class="auth"><div class="auth-card"><p class="error">${esc(T('error'))}</p></div></div>`;
+      app.innerHTML = `<div class="auth"><div class="auth-card"><p class="error">Error</p></div></div>`;
       return;
     }
-    if (!lang) setLang(s.lang);
-    else setLang(lang);
-    if (!s.setupDone) return renderSetup();
+    demo = s.demo;
+    await setLang(lang || s.lang);
+    if (!s.setupDone) return renderSetup(s);
     if (!s.authed) return renderLogin();
     await loadData();
     renderShell();
     startPolling();
   }
 
-  const langSwitch = () => `<button class="btn ghost sm" data-act="lang" type="button">${esc(T('other'))}</button>`;
+  const langSwitch = () =>
+    `<select class="lang-select" data-act-change="lang" aria-label="Language">${LANGUAGES.map(
+      (l) => `<option value="${esc(l.code)}" ${l.code === lang ? 'selected' : ''}>${esc(l.name)}</option>`
+    ).join('')}</select>`;
 
-  function renderSetup() {
-    const guessCur = { ar: 'EGP', en: 'USD' }[lang] || 'USD';
+  const langOptions = (selected) =>
+    LANGUAGES.map((l) => `<option value="${esc(l.code)}" ${l.code === selected ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
+
+  const CURRENCY_GUESS = { ar: 'EGP', en: 'USD', es: 'MXN', pt: 'BRL', fr: 'EUR', tr: 'TRY', id: 'IDR', hi: 'INR' };
+  const browserTimezone = () => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+  };
+
+  function renderSetup(s) {
     app.innerHTML = `
       <div class="auth"><form class="auth-card" id="setup" autocomplete="off">
         <div style="text-align:end">${langSwitch()}</div>
         <img class="mark" src="/img/icon.svg" alt="">
         <h1>${esc(T('setupTitle'))}</h1>
         <p class="sub">${esc(T('setupSub'))}</p>
-        <label class="field"><span>${esc(T('shopName'))}</span><input name="name" required maxlength="80" autofocus></label>
+        ${s.needsSetupCode ? `<label class="field"><span>🔑 ${esc(T('setupCode'))}</span><input name="setupCode" required maxlength="12" placeholder="ABCD-EFGH" autocapitalize="characters" spellcheck="false" style="letter-spacing:.15em;font-weight:700"><small>${esc(T('setupCodeHint'))}</small></label>` : ''}
+        <label class="field"><span>${esc(T('shopName'))}</span><input name="name" required maxlength="80"></label>
         <label class="field"><span>${esc(T('whatsapp'))}</span><input name="whatsapp" type="tel" inputmode="tel" maxlength="20" placeholder="201001234567"><small>${esc(T('whatsappHint'))}</small></label>
         <div class="grid2">
-          <label class="field"><span>${esc(T('currency'))}</span><input name="currency" list="currencies" value="${guessCur}" maxlength="12"></label>
-          <label class="field"><span>${esc(T('defaultLang'))}</span><select name="lang"><option value="ar" ${lang === 'ar' ? 'selected' : ''}>العربية</option><option value="en" ${lang === 'en' ? 'selected' : ''}>English</option></select></label>
+          <label class="field"><span>${esc(T('currency'))}</span><input name="currency" list="currencies" value="${CURRENCY_GUESS[lang] || 'USD'}" maxlength="12"></label>
+          <label class="field"><span>${esc(T('defaultLang'))}</span><select name="lang">${langOptions(lang)}</select></label>
         </div>
-        <datalist id="currencies">${['EGP', 'SAR', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'MAD', 'TND', 'DZD', 'IQD', 'LBP', 'USD', 'EUR', 'GBP', 'TRY', 'INR', 'PKR', 'IDR', 'BRL', 'MXN', 'ج.م', 'ر.س', 'د.إ'].map((c) => `<option value="${c}">`).join('')}</datalist>
+        <datalist id="currencies">${['EGP', 'SAR', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'MAD', 'TND', 'DZD', 'IQD', 'LBP', 'USD', 'EUR', 'GBP', 'TRY', 'INR', 'PKR', 'IDR', 'BRL', 'MXN', 'COP', 'ARS', 'CLP', 'PEN', 'XOF', 'NGN', 'PHP', 'MYR', '$', '€', '£', '₹', 'R$', 'ج.م', 'ر.س', 'د.إ'].map((c) => `<option value="${c}">`).join('')}</datalist>
         <label class="field"><span>${esc(T('password'))}</span><input name="password" type="password" required minlength="8" autocomplete="new-password"><small>${esc(T('passwordHint'))}</small></label>
         ${sw('sample', true, `${esc(T('sampleMenu'))} <small class="muted">— ${esc(T('sampleHint'))}</small>`)}
         <button class="btn block" type="submit">${esc(T('openShop'))}</button>
         <p class="error" id="err"></p>
       </form></div>`;
-    $('#setup').addEventListener('submit', async (e) => {
+    const f = $('#setup');
+    (f.setupCode || f.name).focus();
+    f.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const f = e.target;
       if (f.password.value.length < 8) return ($('#err').textContent = T('weakPassword'));
       f.querySelector('button[type=submit]').disabled = true;
       try {
         await api('POST', '/api/setup', {
+          setupCode: f.setupCode ? f.setupCode.value : '',
           name: f.name.value, whatsapp: f.whatsapp.value, currency: f.currency.value,
           lang: f.lang.value, password: f.password.value, sample: f.sample.checked,
+          timezone: browserTimezone(),
         });
-        setLang(f.lang.value);
+        await setLang(f.lang.value);
         boot();
       } catch (err) {
-        $('#err').textContent = err.code === 'weak_password' ? T('weakPassword') : T('error');
+        const msg = { weak_password: 'weakPassword', invalid_setup_code: 'invalidSetupCode', rate_limited: 'rateLimited' }[err.code];
+        $('#err').textContent = T(msg || 'error');
         f.querySelector('button[type=submit]').disabled = false;
       }
     });
@@ -262,10 +195,12 @@
         <img class="mark" src="/img/icon.svg" alt="">
         <h1>${esc(T('loginTitle'))}</h1>
         <p class="sub">${esc(T('loginSub'))}</p>
-        <label class="field"><span>${esc(T('password'))}</span><input name="password" type="password" required autocomplete="current-password" autofocus></label>
+        ${demo ? `<p class="demo-note">🧪 ${esc(T('demoLogin'))} <b>${esc(demo.password)}</b></p>` : ''}
+        <label class="field"><span>${esc(T('password'))}</span><input name="password" type="password" required autocomplete="current-password" value="${demo ? esc(demo.password) : ''}"></label>
         <button class="btn block" type="submit">${esc(T('login'))}</button>
         <p class="error" id="err"></p>
       </form></div>`;
+    $('#login [name=password]').focus();
     $('#login').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
@@ -279,17 +214,19 @@
 
   // ======================= shell =======================
   const TABS = [
-    ['home', '📊'], ['orders', '🧾'], ['menu', '🍽️'], ['share', '📱'], ['settings', '⚙️'],
+    ['home', '📊'], ['orders', '🧾'], ['menu', '🍽️'], ['share', '📣'], ['settings', '⚙️'],
   ];
 
   function renderShell() {
     const s = state.data.settings;
     const hash = location.hash.slice(1);
     if (TABS.some(([k]) => k === hash)) state.tab = hash;
+    const open = state.data.open;
     app.innerHTML = `
+      ${demo ? `<div class="demo-bar">🧪 ${esc(T('demoLogin'))} <b>${esc(demo.password)}</b></div>` : ''}
       <header class="top">
         <img src="${esc(s.logo || '/img/icon.svg')}" alt="" width="36" height="36" style="border-radius:10px;object-fit:cover">
-        <div class="shop">${esc(s.name)}<small class="muted"><span class="status-dot ${s.acceptingOrders ? '' : 'off'}"></span>${esc(s.acceptingOrders ? T('open') : T('closed'))}</small></div>
+        <div class="shop">${esc(s.name)}<small class="muted"><span class="status-dot ${open ? '' : 'off'}"></span>${esc(open ? T('open') : T('closed'))}</small></div>
         ${langSwitch()}
         <a class="btn sm" href="/" target="_blank" rel="noopener">${esc(T('viewStore'))} ↗</a>
         <button class="icon-btn" data-act="logout" title="${esc(T('logout'))}" aria-label="${esc(T('logout'))}" type="button">🚪</button>
@@ -340,16 +277,16 @@
       [!!s.logo, T('stepLogo'), 'settings'],
       [st.month.orders > 0, T('stepShare'), 'share'],
     ];
-    const allDone = steps.every((x) => x[0]);
+    const allDone = demo || steps.every((x) => x[0]);
     view.innerHTML = `
       <h2 class="title">${esc(T('home'))}</h2>
       <div class="card big-toggle">
-        <div class="txt"><b>${esc(T('accepting'))}</b><span class="muted small">${esc(s.acceptingOrders ? T('acceptingOn') : T('acceptingOff'))}</span></div>
+        <div class="txt"><b>${esc(T('accepting'))}</b><span class="muted small">${esc(!s.acceptingOrders ? T('acceptingOff') : state.data.open ? T('acceptingOn') : T('closedBySchedule'))}</span></div>
         <label class="switch"><input type="checkbox" id="accepting" ${s.acceptingOrders ? 'checked' : ''}><i></i></label>
       </div>
       <div class="stats">
         <div class="stat"><div class="label">${esc(T('today'))}</div><div class="value">${st.today.orders} <small>${esc(money(st.today.revenue))}</small></div></div>
-        <div class="stat"><div class="label">${esc(T('week'))}</div><div class="value">${st.week.orders} <small>${esc(T('ordersWord'))}</small></div></div>
+        <div class="stat"><div class="label">${esc(T('visitors'))}</div><div class="value">${st.visits.month} <small>${st.visits.today} ${esc(T('visitorsToday'))}</small></div><div class="muted small">${esc(T('conversion'))}: <b>${st.visits.conversion}%</b> ${esc(T('conversionHint'))}</div></div>
         <div class="stat"><div class="label">${esc(T('month'))}</div><div class="value" style="font-size:22px">${esc(money(st.month.revenue))}</div></div>
         <div class="stat"><div class="label">${esc(T('avgOrder'))}</div><div class="value" style="font-size:22px">${esc(money(st.month.avg))}</div></div>
       </div>
@@ -375,8 +312,9 @@
         </div>
       </div>`;
     $('#accepting').addEventListener('change', async (e) => {
-      const { settings } = await api('PUT', '/api/admin/settings', { acceptingOrders: e.target.checked });
+      const { settings, open } = await api('PUT', '/api/admin/settings', { acceptingOrders: e.target.checked });
       state.data.settings = settings;
+      state.data.open = open;
       renderShell();
     });
   };
@@ -409,11 +347,12 @@
       </div>
       <div class="kv">
         <div>👤 <b>${esc(o.customer.name)}</b>${o.customer.phone ? ` · <a href="tel:${esc(o.customer.phone)}">${esc(o.customer.phone)}</a>` : ''}</div>
-        ${o.customer.address ? `<div>📍 ${esc(o.customer.address)}</div>` : ''}
+        ${o.customer.address ? `<div>📍 ${o.zone ? `<b>${esc(o.zone)}</b> · ` : ''}${esc(o.customer.address)}</div>` : ''}
         ${o.customer.notes ? `<div>📝 ${esc(o.customer.notes)}</div>` : ''}
       </div>
       <ul class="order-items">${o.items.map((i) => `<li><span>${i.qty}× ${esc(i.name)}${i.variant ? ` <span class="muted">(${esc(i.variant)})</span>` : ''}</span><span>${esc(money(i.price * i.qty))}</span></li>`).join('')}
-        ${o.deliveryFee ? `<li class="muted"><span>${esc(T('deliveryFee'))}</span><span>${esc(money(o.deliveryFee))}</span></li>` : ''}</ul>
+        ${o.discount ? `<li class="muted"><span>${esc(T('discount'))} (${esc(o.coupon)})</span><span>−${esc(money(o.discount))}</span></li>` : ''}
+        ${o.deliveryFee ? `<li class="muted"><span>${esc(T('deliveryFee'))}${o.zone ? ` · ${esc(o.zone)}` : ''}</span><span>${esc(money(o.deliveryFee))}</span></li>` : ''}</ul>
       <div class="order-foot">
         <span class="total">${esc(T('total'))}: ${esc(money(o.total))}</span>
         ${phone ? `<a class="btn sm wa" href="https://wa.me/${phone}" target="_blank" rel="noopener">💬 ${esc(T('chatCustomer'))}</a>` : ''}
@@ -453,6 +392,16 @@
             <button class="icon-btn" data-move="products" data-id="${p.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${esc(T('up'))}">↑</button>
             <button class="icon-btn" data-act="edit-product" data-id="${p.id}" title="${esc(T('edit'))}">✏️</button>
           </div>`).join('')}`).join('') : `<div class="empty-state"><div class="big">🍽️</div><p>${esc(T('noProductsYet'))}</p><button class="btn" data-act="new-product" type="button">+ ${esc(T('addProduct'))}</button></div>`}
+      </div>
+      <div class="card">
+        <h3>📄 ${esc(T('csvTitle'))}</h3>
+        <p class="muted small">${esc(T('csvHint'))}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <a class="btn line sm" href="/api/admin/products-template.csv" download>${esc(T('csvTemplate'))}</a>
+          <a class="btn line sm" href="/api/admin/products.csv" download>${esc(T('csvExport'))}</a>
+          <label class="btn sm" style="cursor:pointer">${esc(T('csvImport'))}<input type="file" accept=".csv,text/csv" id="csv-file" hidden></label>
+        </div>
+        <div style="margin-top:12px">${sw('csvReplace', false, esc(T('csvReplace')))}</div>
       </div>`;
 
     $('#add-cat').addEventListener('submit', async (e) => {
@@ -460,6 +409,22 @@
       const cat = await api('POST', '/api/admin/categories', { name: e.target.name.value });
       state.data.categories.push(cat);
       renderTab();
+    });
+
+    $('#csv-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const replace = $('[name=csvReplace]', view).checked;
+      if (replace && !confirm(T('importConfirm'))) return;
+      try {
+        const { imported } = await api('POST', '/api/admin/products/csv', { csv: await file.text(), replace });
+        await loadData();
+        toast(T('csvImported').replace('{n}', imported));
+        renderTab();
+      } catch {
+        toast(T('csvError'), true);
+      }
+      e.target.value = '';
     });
   };
 
@@ -565,6 +530,16 @@
 
   const COLORS = ['#0f766e', '#16a34a', '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#a16207', '#0e7490', '#111827'];
 
+  const zoneRow = (z = { id: '', name: '', fee: '' }) =>
+    `<div class="vrow" data-zid="${esc(z.id)}"><input class="input" data-zname placeholder="${esc(T('zoneName'))}" value="${esc(z.name)}" maxlength="60"><input class="input price" data-zfee type="number" min="0" step="any" placeholder="${esc(T('fee'))}" value="${esc(z.fee)}"><button type="button" class="icon-btn" data-zdel>✕</button></div>`;
+
+  // 2024-01-07 was a Sunday, so day i = Sunday + i.
+  const dayName = (i) => new Intl.DateTimeFormat(lang, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 7 + i)));
+
+  const timezones = () => {
+    try { return Intl.supportedValuesOf('timeZone'); } catch { return []; }
+  };
+
   VIEWS.settings = async (view) => {
     const s = state.data.settings;
     let logo = s.logo;
@@ -576,7 +551,7 @@
           <h3>🏪 ${esc(T('storeInfo'))}</h3>
           <div class="grid2">
             <label class="field"><span>${esc(T('shopName'))}</span><input name="name" maxlength="80" value="${esc(s.name)}"></label>
-            <label class="field"><span>${esc(T('defaultLang'))}</span><select name="lang"><option value="ar" ${s.lang === 'ar' ? 'selected' : ''}>العربية</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option></select></label>
+            <label class="field"><span>${esc(T('defaultLang'))}</span><select name="lang">${langOptions(s.lang)}</select></label>
           </div>
           <label class="field"><span>${esc(T('tagline'))}</span><input name="tagline" maxlength="140" value="${esc(s.tagline)}"></label>
           <label class="field"><span>${esc(T('about'))}</span><textarea name="about" rows="2" maxlength="1000">${esc(s.about)}</textarea></label>
@@ -601,8 +576,31 @@
             <label class="field"><span>${esc(T('freeDeliveryOver'))}</span><input name="freeDeliveryOver" type="number" min="0" step="any" value="${esc(s.freeDeliveryOver)}"><small>${esc(T('freeHint'))}</small></label>
             <label class="field"><span>${esc(T('minOrder'))}</span><input name="minOrder" type="number" min="0" step="any" value="${esc(s.minOrder)}"><small>${esc(T('freeHint'))}</small></label>
           </div>
+          <div class="field">
+            <span>🗺️ ${esc(T('zones'))}</span>
+            <small style="margin:0 0 8px">${esc(T('zonesHint'))}</small>
+            <div id="zlist">${(s.zones || []).map(zoneRow).join('')}</div>
+            <button type="button" class="btn sm ghost" id="zadd">${esc(T('addZone'))}</button>
+          </div>
           ${sw('pickup', s.pickup, esc(T('pickupOn')))}
           ${sw('dineIn', s.dineIn, esc(T('dineInOn')))}
+        </div>
+
+        <div class="card">
+          <h3>🕒 ${esc(T('schedule'))}</h3>
+          <label class="check"><span class="switch"><input type="checkbox" id="sched-on" ${s.schedule.enabled ? 'checked' : ''}><i></i></span><span>${esc(T('scheduleOn'))}</span></label>
+          <p class="muted small">${esc(T('scheduleHint'))}</p>
+          <div id="sched" ${s.schedule.enabled ? '' : 'hidden'}>
+            <div class="sched-grid">${s.schedule.days.map((d, i) => `<div class="sched-row" data-day="${i}">
+              <span class="sched-day">${esc(dayName(i))}</span>
+              <label class="switch"><input type="checkbox" data-open ${d.open ? 'checked' : ''}><i></i></label>
+              <input type="time" class="input" data-from value="${esc(d.from)}" ${d.open ? '' : 'disabled'}>
+              <span class="muted">→</span>
+              <input type="time" class="input" data-to value="${esc(d.to)}" ${d.open ? '' : 'disabled'}>
+            </div>`).join('')}</div>
+            <label class="field" style="margin-top:12px"><span>${esc(T('timezone'))}</span><input id="sched-tz" list="tzlist" value="${esc(s.schedule.timezone || browserTimezone())}"></label>
+            <datalist id="tzlist">${timezones().map((z) => `<option value="${esc(z)}">`).join('')}</datalist>
+          </div>
         </div>
 
         <div class="card">
@@ -640,6 +638,22 @@
       </div>`;
 
     const form = $('#sform');
+
+    $('#zadd').addEventListener('click', () => {
+      $('#zlist').insertAdjacentHTML('beforeend', zoneRow());
+      $('#zlist .vrow:last-child input').focus();
+    });
+    $('#zlist').addEventListener('click', (e) => {
+      if (e.target.closest('[data-zdel]')) e.target.closest('.vrow').remove();
+    });
+    $('#sched-on').addEventListener('change', (e) => ($('#sched').hidden = !e.target.checked));
+    $('#sched').addEventListener('change', (e) => {
+      if (e.target.matches('[data-open]')) {
+        const row = e.target.closest('.sched-row');
+        $$('input[type=time]', row).forEach((i) => (i.disabled = !e.target.checked));
+      }
+    });
+
     const showImgs = () => {
       $('#logo-prev').innerHTML = logo ? `<img src="${esc(logo)}" alt="">` : '🏪';
       $('#cover-prev').innerHTML = cover ? `<img src="${esc(cover)}" alt="">` : '🖼️';
@@ -679,9 +693,16 @@
         if (!el.name) continue;
         body[el.name] = el.type === 'checkbox' ? el.checked : el.value;
       }
+      body.zones = $$('#zlist .vrow').map((r) => ({ id: r.dataset.zid, name: $('[data-zname]', r).value, fee: $('[data-zfee]', r).value }));
+      body.schedule = {
+        enabled: $('#sched-on').checked,
+        timezone: $('#sched-tz').value.trim(),
+        days: $$('.sched-row').map((r) => ({ open: $('[data-open]', r).checked, from: $('[data-from]', r).value, to: $('[data-to]', r).value })),
+      };
       try {
-        const { settings } = await api('PUT', '/api/admin/settings', body);
+        const { settings, open } = await api('PUT', '/api/admin/settings', body);
         state.data.settings = settings;
+        state.data.open = open;
         toast(T('saved'));
         renderShell();
       } catch {
@@ -696,7 +717,7 @@
         e.target.reset();
         toast(T('passwordChanged'));
       } catch (err) {
-        toast(err.code === 'weak_password' ? T('weakPassword') : T('wrongPassword'), true);
+        toast(err.code === 'demo' ? T('demoBlocked') : err.code === 'weak_password' ? T('weakPassword') : T('wrongPassword'), true);
       }
     });
 
@@ -708,14 +729,15 @@
         await loadData();
         toast(T('imported'));
         renderShell();
-      } catch {
-        toast(T('invalidBackup'), true);
+      } catch (err) {
+        toast(err.code === 'demo' ? T('demoBlocked') : T('invalidBackup'), true);
       }
     });
   };
 
   VIEWS.share = async (view) => {
     const s = state.data.settings;
+    const coupons = state.data.coupons || [];
     const link = state.data.baseUrl;
     const qr = `/api/admin/qr.svg?text=${encodeURIComponent(link)}`;
     const text = `${T('shareText').replace('{name}', s.name)}\n${link}`;
@@ -735,6 +757,23 @@
         </div>
       </div>
       <div class="card">
+        <h3>🏷️ ${esc(T('coupons'))}</h3>
+        <p class="muted small">${esc(T('couponsHint'))}</p>
+        ${coupons.length ? coupons.map((c) => `<div class="cat-row">
+          <span class="name"><code class="code">${esc(c.code)}</code> <span class="muted small">${c.type === 'percent' ? `${c.value}%` : esc(money(c.value))}${c.minOrder ? ` · ${esc(T('couponMin'))} ${esc(money(c.minOrder))}` : ''} · ${c.uses || 0}${c.maxUses ? `/${c.maxUses}` : ''} ${esc(T('used'))}</span></span>
+          <label class="switch" title="${esc(T('active'))}"><input type="checkbox" data-coupon-active="${c.id}" ${c.active ? 'checked' : ''}><i></i></label>
+          <button class="icon-btn" data-act="del-coupon" data-id="${c.id}" title="${esc(T('del'))}">🗑</button>
+        </div>`).join('') : `<p class="muted">${esc(T('noCoupons'))}</p>`}
+        <form id="cform" class="coupon-form">
+          <label class="field"><span>${esc(T('code'))}</span><input name="code" required maxlength="30" placeholder="WELCOME10" style="text-transform:uppercase"></label>
+          <label class="field"><span>${esc(T('couponType'))}</span><select name="type"><option value="percent">${esc(T('percent'))}</option><option value="fixed">${esc(T('fixed'))}</option></select></label>
+          <label class="field"><span>${esc(T('value'))}</span><input name="value" type="number" min="0" step="any" required value="10"></label>
+          <label class="field"><span>${esc(T('couponMin'))}</span><input name="minOrder" type="number" min="0" step="any" value="0"></label>
+          <label class="field"><span>${esc(T('maxUses'))} <i class="muted" style="font-weight:600;font-style:normal">(${esc(T('maxUsesHint'))})</i></span><input name="maxUses" type="number" min="0" step="1" value="0"></label>
+          <button class="btn" type="submit">${esc(T('addCoupon'))}</button>
+        </form>
+      </div>
+      <div class="card">
         <h3>${esc(T('printPosters'))}</h3>
         <form id="qrform" class="share-row" target="_blank" action="/admin/print-qr">
           <label class="field" style="margin:0;flex:1"><span>${esc(T('tables'))}</span><input name="tables" type="number" min="0" max="100" value="${s.dineIn ? 10 : 0}"></label>
@@ -746,6 +785,19 @@
         <h3>💡 ${esc(T('tipsTitle'))}</h3>
         <ul class="checklist">${['tip1', 'tip2', 'tip3', 'tip4'].map((k) => `<li>✨ ${esc(T(k))}</li>`).join('')}</ul>
       </div>`;
+
+    $('#cform').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      try {
+        await api('POST', '/api/admin/coupons', { code: f.code.value, type: f.type.value, value: f.value.value, minOrder: f.minOrder.value, maxUses: f.maxUses.value });
+        await loadData();
+        toast(T('saved'));
+        renderTab();
+      } catch (err) {
+        toast(err.code === 'coupon_exists' ? T('couponExists') : T('error'), true);
+      }
+    });
   };
 
   // ======================= modal =======================
@@ -808,10 +860,6 @@
         return renderTab();
       }
       const act = el.dataset.act;
-      if (act === 'lang') {
-        setLang(lang === 'ar' ? 'en' : 'ar');
-        return state.data ? renderShell() : boot();
-      }
       if (act === 'logout') {
         await api('POST', '/api/logout');
         state.data = null;
@@ -828,6 +876,12 @@
         const name = prompt(T('rename'), cat.name);
         if (!name || !name.trim()) return;
         await api('PUT', `/api/admin/categories/${cat.id}`, { name });
+        await loadData();
+        return renderTab();
+      }
+      if (act === 'del-coupon') {
+        if (!confirm(T('confirmDelete'))) return;
+        await api('DELETE', `/api/admin/coupons/${el.dataset.id}`);
         await loadData();
         return renderTab();
       }
@@ -857,6 +911,20 @@
   }
 
   document.addEventListener('change', async (e) => {
+    if (e.target.dataset && e.target.dataset.actChange === 'lang') {
+      await setLang(e.target.value);
+      return state.data ? renderShell() : boot();
+    }
+    const couponId = e.target.dataset && e.target.dataset.couponActive;
+    if (couponId) {
+      try {
+        await api('PUT', `/api/admin/coupons/${couponId}`, { active: e.target.checked });
+        await loadData();
+      } catch {
+        toast(T('error'), true);
+      }
+      return;
+    }
     const id = e.target.dataset && e.target.dataset.avail;
     if (!id) return;
     try {

@@ -11,6 +11,7 @@ let server;
 let base;
 let dir;
 let cookie = '';
+let setupCode = '';
 
 const H = { 'Content-Type': 'application/json', 'X-Dukkan': '1' };
 
@@ -29,7 +30,8 @@ async function call(method, url, body, { auth = false, headers = H } = {}) {
 
 before(async () => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dukkan-test-'));
-  const app = createApp({ dataDir: dir });
+  const app = createApp({ dataDir: dir, quiet: true });
+  setupCode = app.locals.setupCode;
   await new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
   });
@@ -46,11 +48,24 @@ test('fresh install redirects storefront to setup', async () => {
   assert.equal(r.status, 302);
   assert.equal(r.headers.get('location'), '/admin');
   const s = await call('GET', '/api/state');
-  assert.deepEqual(s.json, { setupDone: false, authed: false, lang: 'ar' });
+  assert.equal(s.json.setupDone, false);
+  assert.equal(s.json.authed, false);
+  assert.equal(s.json.needsSetupCode, true);
+  assert.equal(s.json.demo, null);
+  assert.ok(s.json.languages.length >= 8);
+  assert.match(setupCode, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+});
+
+test('setup requires the setup code from the server logs', async () => {
+  const none = await call('POST', '/api/setup', { password: 'supersecret' });
+  assert.equal(none.status, 403);
+  assert.equal(none.json.error, 'invalid_setup_code');
+  const wrong = await call('POST', '/api/setup', { password: 'supersecret', setupCode: 'AAAA-AAAA' });
+  assert.equal(wrong.json.error, 'invalid_setup_code');
 });
 
 test('setup rejects weak passwords and missing CSRF header', async () => {
-  assert.equal((await call('POST', '/api/setup', { password: 'short' })).status, 400);
+  assert.equal((await call('POST', '/api/setup', { password: 'short', setupCode })).status, 400);
   const noHeader = await call('POST', '/api/setup', { password: 'longenough' }, { headers: { 'Content-Type': 'application/json' } });
   assert.equal(noHeader.status, 403);
 });
@@ -58,6 +73,8 @@ test('setup rejects weak passwords and missing CSRF header', async () => {
 test('setup creates the shop with a sample menu and logs in', async () => {
   const r = await call('POST', '/api/setup', {
     name: 'Test Café', whatsapp: '+20 100 123 4567', currency: 'EGP', lang: 'en', password: 'supersecret', sample: true,
+    setupCode: setupCode.toLowerCase().replace('-', ' '), // forgiving about case and separators
+    timezone: 'Africa/Cairo',
   });
   assert.equal(r.status, 200);
   cookie = r.headers.get('set-cookie').split(';')[0];
@@ -69,6 +86,7 @@ test('setup creates the shop with a sample menu and logs in', async () => {
   const data = await call('GET', '/api/admin/data', undefined, { auth: true });
   assert.equal(data.json.settings.name, 'Test Café');
   assert.equal(data.json.settings.whatsapp, '+201001234567');
+  assert.equal(data.json.settings.schedule.timezone, 'Africa/Cairo');
   assert.ok(data.json.products.length > 5);
 });
 
