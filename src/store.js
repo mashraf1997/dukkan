@@ -44,6 +44,8 @@ function defaultSettings() {
     currency: 'EGP',
     lang: 'ar',
     color: '#0f766e',
+    theme: 'fresh',
+    font: 'cairo',
     acceptingOrders: true,
     closedMessage: '',
     delivery: true,

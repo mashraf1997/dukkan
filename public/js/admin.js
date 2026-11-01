@@ -28,6 +28,14 @@
   const app = $('#app');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+  const ICONS = '/img/icons.svg';
+  const ic = (name, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="${ICONS}#i-${name}"/></svg>`;
+  // Trend chip: ↑ 12% (green) / ↓ 5% (red); nothing when there's no previous data.
+  const trend = (pct, hint) =>
+    pct === null || pct === undefined
+      ? ''
+      : `<span class="trend ${pct >= 0 ? 'up' : 'down'}" title="${esc(hint || '')}">${ic(pct >= 0 ? 'trend-up' : 'trend-down')}${Math.abs(pct)}%</span>`;
+
   let toastTimer;
   function toast(msg, bad) {
     const el = $('#toast');
@@ -145,9 +153,23 @@
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
   };
 
+  // Login / setup screens: brand panel + form.
+  const authShell = (form) => `
+    <div class="auth">
+      <aside class="auth-side">
+        <div class="auth-brand"><img src="/img/icon.svg" alt="" width="40" height="40"><b>Dukkan</b></div>
+        <h2>${esc(T('authTagline'))}</h2>
+        <ul>${['authPoint1', 'authPoint2', 'authPoint3'].map((k) => `<li>${ic('check')}<span>${esc(T(k))}</span></li>`).join('')}</ul>
+        <div class="auth-mock" aria-hidden="true">
+          <div class="m-bubble">🛒 <b>#1024</b> · 2× Latte, 1× Croissant<br><small>Total $14.50 · 🚚 Delivery</small></div>
+          <div class="m-bubble me">✅ ${esc(T('st_confirmed'))}</div>
+        </div>
+      </aside>
+      <div class="auth-main">${form}</div>
+    </div>`;
+
   function renderSetup(s) {
-    app.innerHTML = `
-      <div class="auth"><form class="auth-card" id="setup" autocomplete="off">
+    app.innerHTML = authShell(`<form class="auth-card" id="setup" autocomplete="off">
         <div style="text-align:end">${langSwitch()}</div>
         <img class="mark" src="/img/icon.svg" alt="">
         <h1>${esc(T('setupTitle'))}</h1>
@@ -164,7 +186,7 @@
         ${sw('sample', true, `${esc(T('sampleMenu'))} <small class="muted">— ${esc(T('sampleHint'))}</small>`)}
         <button class="btn block" type="submit">${esc(T('openShop'))}</button>
         <p class="error" id="err"></p>
-      </form></div>`;
+      </form>`);
     const f = $('#setup');
     (f.setupCode || f.name).focus();
     f.addEventListener('submit', async (e) => {
@@ -189,8 +211,7 @@
   }
 
   function renderLogin() {
-    app.innerHTML = `
-      <div class="auth"><form class="auth-card" id="login">
+    app.innerHTML = authShell(`<form class="auth-card" id="login">
         <div style="text-align:end">${langSwitch()}</div>
         <img class="mark" src="/img/icon.svg" alt="">
         <h1>${esc(T('loginTitle'))}</h1>
@@ -199,7 +220,7 @@
         <label class="field"><span>${esc(T('password'))}</span><input name="password" type="password" required autocomplete="current-password" value="${demo ? esc(demo.password) : ''}"></label>
         <button class="btn block" type="submit">${esc(T('login'))}</button>
         <p class="error" id="err"></p>
-      </form></div>`;
+      </form>`);
     $('#login [name=password]').focus();
     $('#login').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -214,7 +235,7 @@
 
   // ======================= shell =======================
   const TABS = [
-    ['home', '📊'], ['orders', '🧾'], ['menu', '🍽️'], ['share', '📣'], ['settings', '⚙️'],
+    ['home', 'dashboard'], ['orders', 'receipt'], ['menu', 'menu-book'], ['appearance', 'palette'], ['share', 'megaphone'], ['settings', 'settings'],
   ];
 
   function renderShell() {
@@ -228,11 +249,11 @@
         <img src="${esc(s.logo || '/img/icon.svg')}" alt="" width="36" height="36" style="border-radius:10px;object-fit:cover">
         <div class="shop">${esc(s.name)}<small class="muted"><span class="status-dot ${open ? '' : 'off'}"></span>${esc(open ? T('open') : T('closed'))}</small></div>
         ${langSwitch()}
-        <a class="btn sm" href="/" target="_blank" rel="noopener">${esc(T('viewStore'))} ↗</a>
-        <button class="icon-btn" data-act="logout" title="${esc(T('logout'))}" aria-label="${esc(T('logout'))}" type="button">🚪</button>
+        <a class="btn sm" href="/" target="_blank" rel="noopener">${ic('external')}<span class="hide-sm">${esc(T('viewStore'))}</span></a>
+        <button class="icon-btn" data-act="logout" title="${esc(T('logout'))}" aria-label="${esc(T('logout'))}" type="button">${ic('logout')}</button>
       </header>
       <div class="layout">
-        <nav class="nav">${TABS.map(([k, ico]) => `<button type="button" data-tab="${k}" class="${state.tab === k ? 'active' : ''}"><span class="ico">${ico}</span><span>${esc(T(k))}</span>${k === 'orders' ? '<span class="dot" id="new-dot" hidden></span>' : ''}</button>`).join('')}</nav>
+        <nav class="nav">${TABS.map(([k, ico]) => `<button type="button" data-tab="${k}" class="${state.tab === k ? 'active' : ''}">${ic(ico, 'i ico')}<span>${esc(T(k))}</span>${k === 'orders' ? '<span class="dot" id="new-dot" hidden></span>' : ''}</button>`).join('')}</nav>
         <main class="view" id="view"></main>
       </div>`;
     updateNewDot();
@@ -266,51 +287,170 @@
   // ======================= views =======================
   const VIEWS = {};
 
+  // Smooth area chart as an inline SVG (no chart library).
+  function areaChart(values, labels, fmt) {
+    const W = 640;
+    const H = 200;
+    const P = { t: 16, r: 12, b: 26, l: 12 };
+    const max = Math.max(1, ...values);
+    const n = values.length;
+    const x = (i) => P.l + (i * (W - P.l - P.r)) / Math.max(1, n - 1);
+    const y = (v) => P.t + (H - P.t - P.b) * (1 - v / max);
+    const pts = values.map((v, i) => [x(i), y(v)]);
+    // Catmull-Rom → cubic Bézier for a soft curve.
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += ` C${c1[0].toFixed(1)},${Math.min(H - P.b, c1[1]).toFixed(1)} ${c2[0].toFixed(1)},${Math.min(H - P.b, c2[1]).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    const area = `${d} L${x(n - 1)},${H - P.b} L${x(0)},${H - P.b} Z`;
+    const grid = [0.25, 0.5, 0.75].map((f) => `<line x1="${P.l}" x2="${W - P.r}" y1="${P.t + (H - P.t - P.b) * f}" y2="${P.t + (H - P.t - P.b) * f}"/>`).join('');
+    // Labels and the hover dot live in HTML so they don't stretch with the SVG.
+    const ticks = labels.map((l, i) => ((i % 3 === 0 && n - 1 - i >= 2) || i === n - 1 ? `<span style="left:${(x(i) / W) * 100}%">${esc(l)}</span>` : '')).join('');
+    const hits = values.map((v, i) => `<rect x="${x(i) - (W / n) / 2}" y="0" width="${W / n}" height="${H}" data-i="${i}"/>`).join('');
+    return `<div class="chart" data-values='${esc(JSON.stringify(values.map(fmt)))}' data-labels='${esc(JSON.stringify(labels))}'>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">
+        <defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity=".28"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
+        <g class="grid">${grid}</g>
+        <path d="${area}" fill="url(#cg)"/>
+        <path d="${d}" class="line"/>
+        <g class="hits">${hits}</g>
+      </svg>
+      <div class="ticks">${ticks}</div>
+      <i class="hover-dot" hidden></i>
+      <div class="chart-tip" hidden></div>
+    </div>`;
+  }
+
+  function wireChart(root) {
+    const chart = $('.chart', root);
+    if (!chart) return;
+    const values = JSON.parse(chart.dataset.values);
+    const labels = JSON.parse(chart.dataset.labels);
+    const svg = $('svg', chart);
+    const dot = $('.hover-dot', chart);
+    const tip = $('.chart-tip', chart);
+    const path = $('.line', chart);
+    chart.addEventListener('pointermove', (e) => {
+      const r = e.target.closest('rect[data-i]');
+      if (!r) return;
+      const i = Number(r.dataset.i);
+      const box = svg.getBoundingClientRect();
+      const vbX = Number(r.getAttribute('x')) + Number(r.getAttribute('width')) / 2;
+      // Find the curve's y at this x.
+      let lo = 0;
+      let hi = path.getTotalLength();
+      let pt = path.getPointAtLength(0);
+      for (let k = 0; k < 18; k++) {
+        const mid = (lo + hi) / 2;
+        pt = path.getPointAtLength(mid);
+        if (pt.x < vbX) lo = mid;
+        else hi = mid;
+      }
+      const left = `${(pt.x / 640) * box.width}px`;
+      const top = `${(pt.y / 200) * box.height}px`;
+      dot.hidden = false;
+      dot.style.left = left;
+      dot.style.top = top;
+      tip.hidden = false;
+      tip.innerHTML = `<b>${esc(values[i])}</b><span>${esc(labels[i])}</span>`;
+      tip.style.left = left;
+      tip.style.top = top;
+    });
+    chart.addEventListener('pointerleave', () => {
+      tip.hidden = true;
+      dot.hidden = true;
+    });
+  }
+
   VIEWS.home = async (view) => {
     const st = (state.stats = await api('GET', '/api/admin/stats'));
     const s = state.data.settings;
     const link = state.data.baseUrl;
-    const maxDay = Math.max(1, ...st.days.map((d) => d.orders));
     const steps = [
       [!!s.whatsapp, T('stepWhatsapp'), 'settings'],
       [st.products > 0, T('stepProducts'), 'menu'],
-      [!!s.logo, T('stepLogo'), 'settings'],
+      [!!s.logo, T('stepLogo'), 'appearance'],
       [st.month.orders > 0, T('stepShare'), 'share'],
     ];
     const allDone = demo || steps.every((x) => x[0]);
+    const metric = state.chartMetric || 'orders';
+    const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
+    const chartValues = st.days.map((d) => (metric === 'orders' ? d.orders : d.revenue));
+    const fmt = (v) => (metric === 'orders' ? `${v} ${T('ordersWord')}` : money(v));
+    const maxHour = Math.max(1, ...st.hours);
+    const peak = st.hours.indexOf(Math.max(...st.hours));
+    const hourLabel = (h) => new Date(2024, 0, 1, h).toLocaleTimeString(lang, { hour: 'numeric' });
+    const mTotal = Math.max(1, st.methods.delivery + st.methods.pickup + st.methods.dineIn);
+    const maxTop = Math.max(1, ...st.top.map((p) => p.qty));
+    const status = !s.acceptingOrders ? T('acceptingOff') : state.data.open ? T('acceptingOn') : T('closedBySchedule');
+
     view.innerHTML = `
-      <h2 class="title">${esc(T('home'))}</h2>
-      <div class="card big-toggle">
-        <div class="txt"><b>${esc(T('accepting'))}</b><span class="muted small">${esc(!s.acceptingOrders ? T('acceptingOff') : state.data.open ? T('acceptingOn') : T('closedBySchedule'))}</span></div>
-        <label class="switch"><input type="checkbox" id="accepting" ${s.acceptingOrders ? 'checked' : ''}><i></i></label>
+      <div class="page-head">
+        <h2 class="title">${esc(T('home'))}</h2>
+        <label class="pill-toggle ${s.acceptingOrders ? 'on' : ''}" title="${esc(status)}">
+          <span class="dot"></span><span>${esc(s.acceptingOrders ? T('open') : T('closed'))}</span>
+          <span class="switch"><input type="checkbox" id="accepting" ${s.acceptingOrders ? 'checked' : ''}><i></i></span>
+        </label>
       </div>
-      <div class="stats">
-        <div class="stat"><div class="label">${esc(T('today'))}</div><div class="value">${st.today.orders} <small>${esc(money(st.today.revenue))}</small></div></div>
-        <div class="stat"><div class="label">${esc(T('visitors'))}</div><div class="value">${st.visits.month} <small>${st.visits.today} ${esc(T('visitorsToday'))}</small></div><div class="muted small">${esc(T('conversion'))}: <b>${st.visits.conversion}%</b> ${esc(T('conversionHint'))}</div></div>
-        <div class="stat"><div class="label">${esc(T('month'))}</div><div class="value" style="font-size:22px">${esc(money(st.month.revenue))}</div></div>
-        <div class="stat"><div class="label">${esc(T('avgOrder'))}</div><div class="value" style="font-size:22px">${esc(money(st.month.avg))}</div></div>
+      ${s.acceptingOrders && !state.data.open ? `<div class="banner warn">${ic('clock')}<span>${esc(T('closedBySchedule'))}</span></div>` : ''}
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-ic c1">${ic('receipt')}</div><div class="kpi-body"><span class="label">${esc(T('today'))}</span><div class="value">${st.today.orders}${trend(st.today.change, T('vsYesterday'))}</div><span class="sub">${esc(money(st.today.revenue))}</span></div></div>
+        <div class="kpi"><div class="kpi-ic c2">${ic('cash')}</div><div class="kpi-body"><span class="label">${esc(T('month'))}</span><div class="value">${esc(money(st.month.revenue))}${trend(st.month.change, T('vsPrevious'))}</div><span class="sub">${st.month.orders} ${esc(T('ordersWord'))}</span></div></div>
+        <div class="kpi"><div class="kpi-ic c3">${ic('bag')}</div><div class="kpi-body"><span class="label">${esc(T('avgOrder'))}</span><div class="value">${esc(money(st.month.avg))}${trend(st.month.avgChange, T('vsPrevious'))}</div><span class="sub">${st.month.avgChange === null ? '&nbsp;' : esc(T('vsPrevious'))}</span></div></div>
+        <div class="kpi"><div class="kpi-ic c4">${ic('users')}</div><div class="kpi-body"><span class="label">${esc(T('visitors'))}</span><div class="value">${st.visits.month}${trend(st.visits.change, T('vsPrevious'))}</div><span class="sub">${esc(T('conversion'))} <b>${st.visits.conversion}%</b> · ${st.visits.today} ${esc(T('visitorsToday'))}</span></div></div>
       </div>
       <div class="dash-cols">
         <div>
           <div class="card">
-            <h3>${esc(T('last14'))}</h3>
-            <div class="bars">${st.days.map((d) => `<div style="height:${(d.orders / maxDay) * 100}%" title="${d.date}: ${d.orders} · ${esc(money(d.revenue))}"></div>`).join('')}</div>
-            <div class="bars-x"><span>${st.days[0].date.slice(5)}</span><span>${st.days[13].date.slice(5)}</span></div>
+            <div class="card-head"><h3>${esc(T('last14'))}</h3>
+              <div class="seg" role="tablist">
+                <button type="button" data-metric="orders" class="${metric === 'orders' ? 'active' : ''}">${esc(T('orders'))}</button>
+                <button type="button" data-metric="revenue" class="${metric === 'revenue' ? 'active' : ''}">${esc(T('revenue'))}</button>
+              </div>
+            </div>
+            ${areaChart(chartValues, st.days.map((d) => dayLabel(d.date)), fmt)}
+          </div>
+          <div class="grid2 gap">
+            <div class="card">
+              <h3>${ic('clock')}${esc(T('peakHours'))}</h3>
+              ${st.month.orders ? `<div class="hours">${st.hours.map((v, h) => `<div class="${h === peak ? 'peak' : ''}" style="height:${Math.max(4, (v / maxHour) * 100)}%" title="${esc(hourLabel(h))}: ${v}"></div>`).join('')}</div>
+              <div class="hours-x"><span>${esc(hourLabel(0))}</span><span>${esc(hourLabel(12))}</span><span>${esc(hourLabel(23))}</span></div>
+              <p class="muted small" style="margin:8px 0 0">${ic('sparkles')} <b>${esc(hourLabel(peak))}</b></p>` : `<p class="muted">${esc(T('noData'))}</p>`}
+            </div>
+            <div class="card">
+              <h3>${ic('truck')}${esc(T('ordersByMethod'))}</h3>
+              ${st.month.orders ? `<div class="stack">${['delivery', 'pickup', 'dineIn'].map((m) => `<div class="m-${m}" style="width:${(st.methods[m] / mTotal) * 100}%"></div>`).join('')}</div>
+              <ul class="legend">${['delivery', 'pickup', 'dineIn'].map((m) => `<li><i class="m-${m}"></i><span>${esc(T(m))}</span><b>${Math.round((st.methods[m] / mTotal) * 100)}%</b></li>`).join('')}</ul>` : `<p class="muted">${esc(T('noData'))}</p>`}
+            </div>
           </div>
           <div class="card">
-            <h3>${esc(T('topProducts'))}</h3>
-            ${st.top.length ? `<ul class="top-list">${st.top.map((p) => `<li><span>${esc(p.name)}</span><b>× ${p.qty}</b></li>`).join('')}</ul>` : `<p class="muted">${esc(T('noData'))}</p>`}
+            <h3>${ic('star')}${esc(T('topProducts'))}</h3>
+            ${st.top.length ? `<ul class="top-list">${st.top.map((p, i) => `<li><span class="rank">${i + 1}</span><span class="nm">${esc(p.name)}<i style="width:${(p.qty / maxTop) * 100}%"></i></span><b>× ${p.qty}</b></li>`).join('')}</ul>` : `<p class="muted">${esc(T('noData'))}</p>`}
           </div>
         </div>
         <div>
-          ${allDone ? '' : `<div class="card"><h3>🚀 ${esc(T('getStarted'))}</h3><ul class="checklist">${steps.map(([done, label, tab]) => `<li class="${done ? 'done' : ''}">${done ? '✅' : '⬜'} ${done ? esc(label) : `<a href="#${tab}" data-tab="${tab}">${esc(label)}</a>`}</li>`).join('')}</ul></div>`}
+          ${allDone ? '' : `<div class="card"><h3>${ic('rocket')}${esc(T('getStarted'))}</h3><div class="progress"><i style="width:${(steps.filter((x) => x[0]).length / steps.length) * 100}%"></i></div><ul class="checklist">${steps.map(([done, label, tab]) => `<li class="${done ? 'done' : ''}"><span class="tick">${done ? ic('check') : ''}</span>${done ? esc(label) : `<a href="#${tab}" data-tab="${tab}">${esc(label)}</a>`}</li>`).join('')}</ul></div>`}
           <div class="card">
-            <h3>🔗 ${esc(T('yourLink'))}</h3>
-            <div class="share-row"><input class="input" readonly value="${esc(link)}" id="link"><button class="btn sm" data-act="copy" data-text="${esc(link)}" type="button">${esc(T('copy'))}</button></div>
-            <div style="text-align:center;margin-top:14px"><img src="/api/admin/qr.svg?text=${encodeURIComponent(link)}" alt="QR" width="160" height="160" style="border-radius:12px;background:#fff;padding:6px"></div>
+            <h3>${ic('link')}${esc(T('yourLink'))}</h3>
+            <div class="share-row"><input class="input" readonly value="${esc(link)}" id="link"><button class="btn sm" data-act="copy" data-text="${esc(link)}" type="button">${ic('copy')}</button></div>
+            <div class="qr-mini"><img src="/api/admin/qr.svg?text=${encodeURIComponent(link)}" alt="QR" width="168" height="168"></div>
           </div>
         </div>
       </div>`;
+
+    wireChart(view);
+    $$('[data-metric]', view).forEach((b) =>
+      b.addEventListener('click', () => {
+        state.chartMetric = b.dataset.metric;
+        renderTab();
+      })
+    );
     $('#accepting').addEventListener('change', async (e) => {
       const { settings, open } = await api('PUT', '/api/admin/settings', { acceptingOrders: e.target.checked });
       state.data.settings = settings;
@@ -342,20 +482,21 @@
     return `<div class="card order s-${o.status}">
       <div class="order-head">
         <span class="no">#${o.no}</span><span class="tag ${o.status}">${esc(T(`st_${o.status}`))}</span>
-        <span class="tag">${{ delivery: '🚚', pickup: '🛍️', dineIn: '🍽️' }[o.method]} ${esc(T(o.method))}${o.table ? ` · ${esc(T('table'))} ${esc(o.table)}` : ''}</span>
+        <span class="tag">${ic({ delivery: 'truck', pickup: 'store', dineIn: 'chair' }[o.method])}${esc(T(o.method))}${o.table ? ` · ${esc(T('table'))} ${esc(o.table)}` : ''}</span>
         <span class="muted small" style="margin-inline-start:auto">${esc(timeAgo(o.createdAt))}</span>
       </div>
       <div class="kv">
-        <div>👤 <b>${esc(o.customer.name)}</b>${o.customer.phone ? ` · <a href="tel:${esc(o.customer.phone)}">${esc(o.customer.phone)}</a>` : ''}</div>
-        ${o.customer.address ? `<div>📍 ${o.zone ? `<b>${esc(o.zone)}</b> · ` : ''}${esc(o.customer.address)}</div>` : ''}
-        ${o.customer.notes ? `<div>📝 ${esc(o.customer.notes)}</div>` : ''}
+        <div>${ic('users')}<b>${esc(o.customer.name)}</b>${o.customer.phone ? ` · <a href="tel:${esc(o.customer.phone)}">${esc(o.customer.phone)}</a>` : ''}</div>
+        ${o.customer.address ? `<div>${ic('pin')}${o.zone ? `<b>${esc(o.zone)}</b> · ` : ''}${esc(o.customer.address)}</div>` : ''}
+        ${o.customer.notes ? `<div>${ic('edit')}${esc(o.customer.notes)}</div>` : ''}
       </div>
       <ul class="order-items">${o.items.map((i) => `<li><span>${i.qty}× ${esc(i.name)}${i.variant ? ` <span class="muted">(${esc(i.variant)})</span>` : ''}</span><span>${esc(money(i.price * i.qty))}</span></li>`).join('')}
         ${o.discount ? `<li class="muted"><span>${esc(T('discount'))} (${esc(o.coupon)})</span><span>−${esc(money(o.discount))}</span></li>` : ''}
         ${o.deliveryFee ? `<li class="muted"><span>${esc(T('deliveryFee'))}${o.zone ? ` · ${esc(o.zone)}` : ''}</span><span>${esc(money(o.deliveryFee))}</span></li>` : ''}</ul>
       <div class="order-foot">
         <span class="total">${esc(T('total'))}: ${esc(money(o.total))}</span>
-        ${phone ? `<a class="btn sm wa" href="https://wa.me/${phone}" target="_blank" rel="noopener">💬 ${esc(T('chatCustomer'))}</a>` : ''}
+        <a class="icon-btn" href="/admin/receipt/${o.id}" target="_blank" rel="noopener" title="${esc(T('printReceipt'))}" aria-label="${esc(T('printReceipt'))}">${ic('print')}</a>
+        ${phone ? `<a class="btn sm wa" href="https://wa.me/${phone}" target="_blank" rel="noopener">${ic('whatsapp')}${esc(T('chatCustomer'))}</a>` : ''}
         ${next.map(([st, label, cls]) => `<button type="button" class="btn sm ${cls}" data-order="${o.id}" data-status="${st}">${esc(label)}</button>`).join('')}
       </div>
     </div>`;
@@ -374,10 +515,10 @@
         ${categories.length ? '' : `<p class="muted small">${esc(T('noCategories'))}</p>`}
         ${categories.map((c, i) => `<div class="cat-row">
           <span class="name">${esc(c.name)} <span class="muted small">(${products.filter((p) => p.categoryId === c.id).length})</span></span>
-          <button class="icon-btn" data-move="categories" data-id="${c.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${esc(T('up'))}">↑</button>
-          <button class="icon-btn" data-move="categories" data-id="${c.id}" data-dir="1" ${i === categories.length - 1 ? 'disabled' : ''} title="${esc(T('down'))}">↓</button>
-          <button class="icon-btn" data-act="rename-cat" data-id="${c.id}" title="${esc(T('edit'))}">✏️</button>
-          <button class="icon-btn" data-act="del-cat" data-id="${c.id}" title="${esc(T('del'))}">🗑</button>
+          <button class="icon-btn" data-move="categories" data-id="${c.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${esc(T('up'))}">${ic('arrow-up')}</button>
+          <button class="icon-btn" data-move="categories" data-id="${c.id}" data-dir="1" ${i === categories.length - 1 ? 'disabled' : ''} title="${esc(T('down'))}">${ic('arrow-down')}</button>
+          <button class="icon-btn" data-act="rename-cat" data-id="${c.id}" title="${esc(T('edit'))}">${ic('edit')}</button>
+          <button class="icon-btn danger" data-act="del-cat" data-id="${c.id}" title="${esc(T('del'))}">${ic('trash')}</button>
         </div>`).join('')}
         <form id="add-cat" class="share-row" style="margin-top:12px"><input class="input" name="name" placeholder="${esc(T('categoryName'))}" maxlength="60" required><button class="btn" type="submit">${esc(T('add'))}</button></form>
       </div>
@@ -389,17 +530,17 @@
             <div class="pthumb">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : esc(p.emoji || p.name.charAt(0))}</div>
             <div class="name">${p.featured ? '⭐ ' : ''}${esc(p.name)}<small>${p.variants && p.variants.length ? p.variants.map((v) => `${esc(v.name)} ${esc(money(v.price))}`).join(' · ') : esc(money(p.price))}</small></div>
             <label class="switch" title="${esc(T('available'))}"><input type="checkbox" data-avail="${p.id}" ${p.available ? 'checked' : ''}><i></i></label>
-            <button class="icon-btn" data-move="products" data-id="${p.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${esc(T('up'))}">↑</button>
-            <button class="icon-btn" data-act="edit-product" data-id="${p.id}" title="${esc(T('edit'))}">✏️</button>
+            <button class="icon-btn" data-move="products" data-id="${p.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${esc(T('up'))}">${ic('arrow-up')}</button>
+            <button class="icon-btn" data-act="edit-product" data-id="${p.id}" title="${esc(T('edit'))}">${ic('edit')}</button>
           </div>`).join('')}`).join('') : `<div class="empty-state"><div class="big">🍽️</div><p>${esc(T('noProductsYet'))}</p><button class="btn" data-act="new-product" type="button">+ ${esc(T('addProduct'))}</button></div>`}
       </div>
       <div class="card">
-        <h3>📄 ${esc(T('csvTitle'))}</h3>
+        <h3>${ic('file')}${esc(T('csvTitle'))}</h3>
         <p class="muted small">${esc(T('csvHint'))}</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <a class="btn line sm" href="/api/admin/products-template.csv" download>${esc(T('csvTemplate'))}</a>
-          <a class="btn line sm" href="/api/admin/products.csv" download>${esc(T('csvExport'))}</a>
-          <label class="btn sm" style="cursor:pointer">${esc(T('csvImport'))}<input type="file" accept=".csv,text/csv" id="csv-file" hidden></label>
+          <a class="btn line sm" href="/api/admin/products-template.csv" download>${ic('download')}${esc(T('csvTemplate'))}</a>
+          <a class="btn line sm" href="/api/admin/products.csv" download>${ic('download')}${esc(T('csvExport'))}</a>
+          <label class="btn sm" style="cursor:pointer">${ic('upload')}${esc(T('csvImport'))}<input type="file" accept=".csv,text/csv" id="csv-file" hidden></label>
         </div>
         <div style="margin-top:12px">${sw('csvReplace', false, esc(T('csvReplace')))}</div>
       </div>`;
@@ -432,7 +573,7 @@
     const isNew = !p;
     p = p || { name: '', description: '', price: '', comparePrice: '', image: '', emoji: '', categoryId: state.data.categories[0] ? state.data.categories[0].id : '', available: true, featured: false, variants: [] };
     let image = p.image;
-    const variantRow = (v = { name: '', price: '' }) => `<div class="vrow"><input class="input" data-vname placeholder="${esc(T('variantName'))}" value="${esc(v.name)}" maxlength="60"><input class="input price" data-vprice type="number" min="0" step="any" placeholder="${esc(T('price'))}" value="${esc(v.price)}"><button type="button" class="icon-btn" data-vdel>✕</button></div>`;
+    const variantRow = (v = { name: '', price: '' }) => `<div class="vrow"><input class="input" data-vname placeholder="${esc(T('variantName'))}" value="${esc(v.name)}" maxlength="60"><input class="input price" data-vprice type="number" min="0" step="any" placeholder="${esc(T('price'))}" value="${esc(v.price)}"><button type="button" class="icon-btn" data-vdel aria-label="${esc(T('del'))}">${ic('x')}</button></div>`;
 
     const box = openModal(`
       <h3>${esc(isNew ? T('addProduct') : T('editProduct'))}</h3>
@@ -442,7 +583,7 @@
           <div class="img-pick">
             <div class="preview" id="pimg"></div>
             <div style="display:grid;gap:6px;flex:1">
-              <label class="btn sm line" style="cursor:pointer">📷 ${esc(T('uploadImage'))}<input type="file" accept="image/*" id="pfile" hidden></label>
+              <label class="btn sm line" style="cursor:pointer">${ic('image')}${esc(T('uploadImage'))}<input type="file" accept="image/*" id="pfile" hidden></label>
               <button type="button" class="btn sm ghost" id="pimg-rm">${esc(T('removeImage'))}</button>
               <input class="input" name="emoji" maxlength="8" placeholder="${esc(T('orEmoji'))} 🍕" value="${esc(p.emoji)}" style="padding:6px 12px">
             </div>
@@ -531,7 +672,7 @@
   const COLORS = ['#0f766e', '#16a34a', '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#a16207', '#0e7490', '#111827'];
 
   const zoneRow = (z = { id: '', name: '', fee: '' }) =>
-    `<div class="vrow" data-zid="${esc(z.id)}"><input class="input" data-zname placeholder="${esc(T('zoneName'))}" value="${esc(z.name)}" maxlength="60"><input class="input price" data-zfee type="number" min="0" step="any" placeholder="${esc(T('fee'))}" value="${esc(z.fee)}"><button type="button" class="icon-btn" data-zdel>✕</button></div>`;
+    `<div class="vrow" data-zid="${esc(z.id)}"><input class="input" data-zname placeholder="${esc(T('zoneName'))}" value="${esc(z.name)}" maxlength="60"><input class="input price" data-zfee type="number" min="0" step="any" placeholder="${esc(T('fee'))}" value="${esc(z.fee)}"><button type="button" class="icon-btn" data-zdel aria-label="${esc(T('del'))}">${ic('x')}</button></div>`;
 
   // 2024-01-07 was a Sunday, so day i = Sunday + i.
   const dayName = (i) => new Intl.DateTimeFormat(lang, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 7 + i)));
@@ -542,28 +683,21 @@
 
   VIEWS.settings = async (view) => {
     const s = state.data.settings;
-    let logo = s.logo;
-    let cover = s.cover;
     view.innerHTML = `
       <h2 class="title">${esc(T('settings'))}</h2>
       <form id="sform">
         <div class="card">
-          <h3>🏪 ${esc(T('storeInfo'))}</h3>
+          <h3>${ic('store')}${esc(T('storeInfo'))}</h3>
           <div class="grid2">
             <label class="field"><span>${esc(T('shopName'))}</span><input name="name" maxlength="80" value="${esc(s.name)}"></label>
             <label class="field"><span>${esc(T('defaultLang'))}</span><select name="lang">${langOptions(s.lang)}</select></label>
           </div>
           <label class="field"><span>${esc(T('tagline'))}</span><input name="tagline" maxlength="140" value="${esc(s.tagline)}"></label>
           <label class="field"><span>${esc(T('about'))}</span><textarea name="about" rows="2" maxlength="1000">${esc(s.about)}</textarea></label>
-          <div class="grid2">
-            <div class="field"><span>${esc(T('logo'))}</span><div class="img-pick"><div class="preview" id="logo-prev"></div><div style="display:grid;gap:6px"><label class="btn sm line" style="cursor:pointer">📷 ${esc(T('uploadImage'))}<input type="file" accept="image/*" id="logo-file" hidden></label><button type="button" class="btn sm ghost" id="logo-rm">${esc(T('removeImage'))}</button></div></div></div>
-            <div class="field"><span>${esc(T('cover'))}</span><div class="img-pick"><div class="preview wide" id="cover-prev"></div><div style="display:grid;gap:6px"><label class="btn sm line" style="cursor:pointer">📷 ${esc(T('uploadImage'))}<input type="file" accept="image/*" id="cover-file" hidden></label><button type="button" class="btn sm ghost" id="cover-rm">${esc(T('removeImage'))}</button></div></div></div>
-          </div>
-          <div class="field"><span>${esc(T('brandColor'))}</span><div class="swatches" id="swatches">${COLORS.map((c) => `<button type="button" data-color="${c}" style="background:${c}" class="${c === s.color ? 'active' : ''}" aria-label="${c}"></button>`).join('')}<input type="color" name="color" value="${esc(s.color)}"></div></div>
         </div>
 
         <div class="card">
-          <h3>🛵 ${esc(T('ordering'))}</h3>
+          <h3>${ic('truck')}${esc(T('ordering'))}</h3>
           ${sw('acceptingOrders', s.acceptingOrders, esc(T('acceptingOrders')))}
           <label class="field"><span>${esc(T('closedMessage'))}</span><input name="closedMessage" maxlength="200" value="${esc(s.closedMessage)}" placeholder="${esc(T('closedMessagePh'))}"></label>
           <div class="grid2">
@@ -577,7 +711,7 @@
             <label class="field"><span>${esc(T('minOrder'))}</span><input name="minOrder" type="number" min="0" step="any" value="${esc(s.minOrder)}"><small>${esc(T('freeHint'))}</small></label>
           </div>
           <div class="field">
-            <span>🗺️ ${esc(T('zones'))}</span>
+            <span>${ic('map')} ${esc(T('zones'))}</span>
             <small style="margin:0 0 8px">${esc(T('zonesHint'))}</small>
             <div id="zlist">${(s.zones || []).map(zoneRow).join('')}</div>
             <button type="button" class="btn sm ghost" id="zadd">${esc(T('addZone'))}</button>
@@ -587,7 +721,7 @@
         </div>
 
         <div class="card">
-          <h3>🕒 ${esc(T('schedule'))}</h3>
+          <h3>${ic('clock')}${esc(T('schedule'))}</h3>
           <label class="check"><span class="switch"><input type="checkbox" id="sched-on" ${s.schedule.enabled ? 'checked' : ''}><i></i></span><span>${esc(T('scheduleOn'))}</span></label>
           <p class="muted small">${esc(T('scheduleHint'))}</p>
           <div id="sched" ${s.schedule.enabled ? '' : 'hidden'}>
@@ -604,7 +738,7 @@
         </div>
 
         <div class="card">
-          <h3>📞 ${esc(T('contact'))}</h3>
+          <h3>${ic('phone')}${esc(T('contact'))}</h3>
           <div class="grid2">
             <label class="field"><span>${esc(T('phone'))}</span><input name="phone" type="tel" maxlength="30" value="${esc(s.phone)}"></label>
             <label class="field"><span>${esc(T('hours'))}</span><input name="hours" maxlength="120" value="${esc(s.hours)}"></label>
@@ -617,11 +751,11 @@
             <label class="field"><span>TikTok</span><input name="tiktok" maxlength="200" value="${esc(s.tiktok)}" placeholder="@yourshop"></label>
           </div>
         </div>
-        <div style="position:sticky;bottom:80px;z-index:5;margin-bottom:16px"><button class="btn block" type="submit">💾 ${esc(T('save'))}</button></div>
+        <div style="position:sticky;bottom:80px;z-index:5;margin-bottom:16px"><button class="btn block" type="submit">${ic('check')}${esc(T('save'))}</button></div>
       </form>
 
       <div class="card">
-        <h3>🔒 ${esc(T('security'))}</h3>
+        <h3>${ic('lock')}${esc(T('security'))}</h3>
         <form id="pwform" class="grid2">
           <label class="field"><span>${esc(T('currentPassword'))}</span><input name="current" type="password" autocomplete="current-password" required></label>
           <label class="field"><span>${esc(T('newPassword'))}</span><input name="next" type="password" autocomplete="new-password" minlength="8" required></label>
@@ -629,11 +763,11 @@
         </form>
       </div>
       <div class="card">
-        <h3>💾 ${esc(T('backup'))}</h3>
+        <h3>${ic('download')}${esc(T('backup'))}</h3>
         <p class="muted small">${esc(T('backupHint'))}</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn line" href="/api/admin/export" download>${esc(T('exportData'))}</a>
-          <label class="btn line" style="cursor:pointer">${esc(T('importData'))}<input type="file" accept="application/json,.json" id="import-file" hidden></label>
+          <a class="btn line" href="/api/admin/export" download>${ic('download')}${esc(T('exportData'))}</a>
+          <label class="btn line" style="cursor:pointer">${ic('upload')}${esc(T('importData'))}<input type="file" accept="application/json,.json" id="import-file" hidden></label>
         </div>
       </div>`;
 
@@ -654,41 +788,9 @@
       }
     });
 
-    const showImgs = () => {
-      $('#logo-prev').innerHTML = logo ? `<img src="${esc(logo)}" alt="">` : '🏪';
-      $('#cover-prev').innerHTML = cover ? `<img src="${esc(cover)}" alt="">` : '🖼️';
-      $('#logo-rm').hidden = !logo;
-      $('#cover-rm').hidden = !cover;
-    };
-    const pick = (input, max, set) =>
-      $(input).addEventListener('change', async (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        try {
-          set(await uploadFile(f, max));
-          showImgs();
-        } catch {
-          toast(T('error'), true);
-        }
-      });
-    pick('#logo-file', 512, (u) => (logo = u));
-    pick('#cover-file', 1600, (u) => (cover = u));
-    $('#logo-rm').addEventListener('click', () => { logo = ''; showImgs(); });
-    $('#cover-rm').addEventListener('click', () => { cover = ''; showImgs(); });
-    showImgs();
-
-    $('#swatches').addEventListener('click', (e) => {
-      const b = e.target.closest('[data-color]');
-      if (!b) return;
-      form.color.value = b.dataset.color;
-      $$('#swatches button').forEach((x) => x.classList.toggle('active', x === b));
-      document.documentElement.style.setProperty('--brand', b.dataset.color);
-    });
-    form.color.addEventListener('input', () => document.documentElement.style.setProperty('--brand', form.color.value));
-
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const body = { logo, cover };
+      const body = {};
       for (const el of form.elements) {
         if (!el.name) continue;
         body[el.name] = el.type === 'checkbox' ? el.checked : el.value;
@@ -735,6 +837,135 @@
     });
   };
 
+  // ---- Design: theme, colour, font, logo & cover with a live phone preview ----
+  const themeMini = (th) => `<div class="tp tp-${th}" aria-hidden="true"><i class="h"></i><div class="rows"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div></div>`;
+
+  function loadFontCss(fonts) {
+    for (const f of fonts) {
+      if ($(`link[data-font-css="${f.key}"]`)) continue;
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = f.href;
+      l.dataset.fontCss = f.key;
+      document.head.appendChild(l);
+    }
+  }
+
+  VIEWS.appearance = async (view) => {
+    const s = state.data.settings;
+    const opts = state.data.appearance;
+    const draft = { theme: s.theme || 'fresh', color: s.color, font: s.font || 'cairo', logo: s.logo, cover: s.cover };
+    const KEYS = Object.keys(draft);
+    loadFontCss(opts.fonts);
+    const imgPick = (key, wide) => `<div class="img-pick">
+        <div class="preview${wide ? ' wide' : ''}" id="${key}-prev"></div>
+        <div style="display:grid;gap:6px">
+          <label class="btn sm line" style="cursor:pointer">${ic('upload')}${esc(T('uploadImage'))}<input type="file" accept="image/*" id="${key}-file" hidden></label>
+          <button type="button" class="btn sm ghost" id="${key}-rm">${ic('trash')}${esc(T('removeImage'))}</button>
+        </div>
+      </div>`;
+
+    view.innerHTML = `
+      <div class="page-head"><h2 class="title">${esc(T('appearance'))}</h2><span class="unsaved" id="unsaved" hidden><i></i>${esc(T('unsaved'))}</span></div>
+      <div class="design">
+        <div class="design-controls">
+          <div class="card">
+            <h3>${ic('sparkles')}${esc(T('themeLabel'))}</h3>
+            <div class="themes">${opts.themes.map((th) => `<button type="button" class="theme-card" data-theme="${th}">${themeMini(th)}<b>${esc(T(`theme_${th}`))}</b><span>${esc(T(`themeDesc_${th}`))}</span></button>`).join('')}</div>
+          </div>
+          <div class="card">
+            <h3>${ic('palette')}${esc(T('brandColor'))}</h3>
+            <div class="swatches" id="swatches">${COLORS.map((c) => `<button type="button" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}<label class="custom-color" title="${esc(T('brandColor'))}"><input type="color" id="color" value="${esc(draft.color)}"></label></div>
+          </div>
+          <div class="card">
+            <h3><span class="aa">Aa</span>${esc(T('font'))}</h3>
+            <div class="fonts">${opts.fonts.map((f) => `<button type="button" class="font-card" data-font="${f.key}" style="font-family:${esc(f.stack)}"><span class="sample">Aa أب</span><small>${esc(f.label)}</small></button>`).join('')}</div>
+          </div>
+          <div class="card">
+            <h3>${ic('image')}${esc(T('logo'))} · ${esc(T('cover'))}</h3>
+            <div class="grid2">
+              <div class="field"><span>${esc(T('logo'))}</span>${imgPick('logo')}</div>
+              <div class="field"><span>${esc(T('cover'))}</span>${imgPick('cover', true)}</div>
+            </div>
+          </div>
+          <div class="save-bar"><button class="btn block" type="button" id="dsave">${ic('check')}${esc(T('save'))}</button></div>
+        </div>
+        <div class="design-preview">
+          <div class="phone"><div class="notch"></div><iframe id="pv" src="/?preview=1&lang=${encodeURIComponent(s.lang)}" title="${esc(T('livePreview'))}"></iframe></div>
+          <p class="muted small preview-hint">${ic('eye')}<span>${esc(T('previewHint'))}</span></p>
+        </div>
+      </div>`;
+
+    const pv = $('#pv');
+    const send = () => {
+      const font = opts.fonts.find((f) => f.key === draft.font) || opts.fonts[0];
+      if (pv.contentWindow) {
+        pv.contentWindow.postMessage(
+          { type: 'dukkan-preview', theme: draft.theme, color: draft.color, fontStack: font.stack, fontHref: font.href, logo: draft.logo, cover: draft.cover },
+          location.origin
+        );
+      }
+    };
+    const sync = () => {
+      $$('.theme-card', view).forEach((b) => b.classList.toggle('active', b.dataset.theme === draft.theme));
+      $$('.font-card', view).forEach((b) => b.classList.toggle('active', b.dataset.font === draft.font));
+      $$('#swatches [data-color]', view).forEach((b) => b.classList.toggle('active', b.dataset.color.toLowerCase() === draft.color.toLowerCase()));
+      $('#color').value = draft.color;
+      view.style.setProperty('--c', draft.color);
+      $('#logo-prev').innerHTML = draft.logo ? `<img src="${esc(draft.logo)}" alt="">` : ic('store');
+      $('#cover-prev').innerHTML = draft.cover ? `<img src="${esc(draft.cover)}" alt="">` : ic('image');
+      $('#logo-rm').hidden = !draft.logo;
+      $('#cover-rm').hidden = !draft.cover;
+      $('#unsaved').hidden = !KEYS.some((k) => (draft[k] || '') !== (s[k] || ''));
+      send();
+    };
+    pv.addEventListener('load', send);
+
+    view.addEventListener('click', (e) => {
+      const th = e.target.closest('[data-theme]');
+      const fo = e.target.closest('[data-font]');
+      const co = e.target.closest('[data-color]');
+      if (th) draft.theme = th.dataset.theme;
+      else if (fo) draft.font = fo.dataset.font;
+      else if (co) draft.color = co.dataset.color;
+      else return;
+      sync();
+    });
+    $('#color').addEventListener('input', (e) => {
+      draft.color = e.target.value;
+      sync();
+    });
+    for (const [key, max] of [['logo', 512], ['cover', 1600]]) {
+      $(`#${key}-file`).addEventListener('change', async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        try {
+          draft[key] = await uploadFile(f, max);
+          sync();
+        } catch (err) {
+          toast(err.code === 'too_large' ? T('tooLarge') : T('error'), true);
+        }
+      });
+      $(`#${key}-rm`).addEventListener('click', () => {
+        draft[key] = '';
+        sync();
+      });
+    }
+    $('#dsave').addEventListener('click', async () => {
+      try {
+        const { settings, open } = await api('PUT', '/api/admin/settings', draft);
+        state.data.settings = settings;
+        state.data.open = open;
+        document.documentElement.style.setProperty('--brand', settings.color);
+        toast(T('saved'));
+        renderShell();
+      } catch {
+        toast(T('error'), true);
+      }
+    });
+    sync();
+  };
+
   VIEWS.share = async (view) => {
     const s = state.data.settings;
     const coupons = state.data.coupons || [];
@@ -750,19 +981,19 @@
             <p class="muted">${esc(T('shareSub'))}</p>
             <div class="share-row" style="margin-bottom:10px"><input class="input" readonly value="${esc(link)}"><button class="btn sm" data-act="copy" data-text="${esc(link)}" type="button">${esc(T('copy'))}</button></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <a class="btn line sm" href="${qr}" download="qr-${esc(s.name)}.svg">${esc(T('downloadQr'))}</a>
-              <a class="btn wa sm" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">💬 ${esc(T('shareWhatsApp'))}</a>
+              <a class="btn line sm" href="${qr}" download="qr-${esc(s.name)}.svg">${ic('download')}${esc(T('downloadQr'))}</a>
+              <a class="btn wa sm" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${ic('whatsapp')}${esc(T('shareWhatsApp'))}</a>
             </div>
           </div>
         </div>
       </div>
       <div class="card">
-        <h3>🏷️ ${esc(T('coupons'))}</h3>
+        <h3>${ic('tag')}${esc(T('coupons'))}</h3>
         <p class="muted small">${esc(T('couponsHint'))}</p>
         ${coupons.length ? coupons.map((c) => `<div class="cat-row">
           <span class="name"><code class="code">${esc(c.code)}</code> <span class="muted small">${c.type === 'percent' ? `${c.value}%` : esc(money(c.value))}${c.minOrder ? ` · ${esc(T('couponMin'))} ${esc(money(c.minOrder))}` : ''} · ${c.uses || 0}${c.maxUses ? `/${c.maxUses}` : ''} ${esc(T('used'))}</span></span>
           <label class="switch" title="${esc(T('active'))}"><input type="checkbox" data-coupon-active="${c.id}" ${c.active ? 'checked' : ''}><i></i></label>
-          <button class="icon-btn" data-act="del-coupon" data-id="${c.id}" title="${esc(T('del'))}">🗑</button>
+          <button class="icon-btn danger" data-act="del-coupon" data-id="${c.id}" title="${esc(T('del'))}">${ic('trash')}</button>
         </div>`).join('') : `<p class="muted">${esc(T('noCoupons'))}</p>`}
         <form id="cform" class="coupon-form">
           <label class="field"><span>${esc(T('code'))}</span><input name="code" required maxlength="30" placeholder="WELCOME10" style="text-transform:uppercase"></label>
@@ -774,16 +1005,16 @@
         </form>
       </div>
       <div class="card">
-        <h3>${esc(T('printPosters'))}</h3>
+        <h3>${ic('qr')}${esc(T('printPosters'))}</h3>
         <form id="qrform" class="share-row" target="_blank" action="/admin/print-qr">
           <label class="field" style="margin:0;flex:1"><span>${esc(T('tables'))}</span><input name="tables" type="number" min="0" max="100" value="${s.dineIn ? 10 : 0}"></label>
-          <button class="btn" type="submit" style="align-self:flex-end">${esc(T('printPosters'))}</button>
+          <button class="btn" type="submit" style="align-self:flex-end">${ic('print')}${esc(T('printPosters'))}</button>
         </form>
         <p class="muted small">${esc(T('tablesHint'))}</p>
       </div>
       <div class="card">
-        <h3>💡 ${esc(T('tipsTitle'))}</h3>
-        <ul class="checklist">${['tip1', 'tip2', 'tip3', 'tip4'].map((k) => `<li>✨ ${esc(T(k))}</li>`).join('')}</ul>
+        <h3>${ic('bulb')}${esc(T('tipsTitle'))}</h3>
+        <ul class="checklist">${['tip1', 'tip2', 'tip3', 'tip4'].map((k) => `<li><span class="tick">${ic('sparkles')}</span>${esc(T(k))}</li>`).join('')}</ul>
       </div>`;
 
     $('#cform').addEventListener('submit', async (e) => {

@@ -215,3 +215,47 @@ test('demo mode: seeded shop, known password, locked-down settings, resets', asy
     fs.rmSync(demoDir, { recursive: true, force: true });
   }
 });
+
+test('design: theme and font are validated and rendered', async () => {
+  const ok = await call('PUT', '/api/admin/settings', { theme: 'elegant', font: 'serif' }, { auth: true });
+  assert.equal(ok.json.settings.theme, 'elegant');
+  assert.equal(ok.json.settings.font, 'serif');
+  const page = await call('GET', '/');
+  assert.match(page.text, /<body class="theme-elegant/);
+  assert.match(page.text, /Playfair\+Display/);
+  const bad = await call('PUT', '/api/admin/settings', { theme: '<script>', font: 'comic-sans' }, { auth: true });
+  assert.equal(bad.json.settings.theme, 'fresh');
+  assert.equal(bad.json.settings.font, 'cairo');
+  const data = await call('GET', '/api/admin/data', undefined, { auth: true });
+  assert.deepEqual(data.json.appearance.themes, ['fresh', 'grid', 'elegant', 'bold']);
+  assert.ok(data.json.appearance.fonts.every((f) => f.href.startsWith('https://fonts.googleapis.com/')));
+});
+
+test('preview mode is noindex and does not count visits', async () => {
+  const before = (await call('GET', '/api/admin/stats', undefined, { auth: true })).json.visits.today;
+  const r = await call('GET', '/?preview=1', undefined, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  assert.match(r.text, /noindex/);
+  assert.match(r.text, /"preview":true/);
+  assert.equal(r.headers.get('set-cookie'), null);
+  assert.equal((await call('GET', '/api/admin/stats', undefined, { auth: true })).json.visits.today, before);
+});
+
+test('receipts print for logged-in owners only', async () => {
+  const { json } = await call('GET', '/api/admin/orders', undefined, { auth: true });
+  const id = json.orders[0].id;
+  const anon = await call('GET', `/admin/receipt/${id}`);
+  assert.equal(anon.status, 302);
+  const r = await call('GET', `/admin/receipt/${id}`, undefined, { auth: true });
+  assert.equal(r.status, 200);
+  assert.match(r.text, new RegExp(`#${json.orders[0].no}`));
+  assert.match(r.text, /size:80mm/);
+  assert.equal((await call('GET', '/admin/receipt/nope', undefined, { auth: true })).status, 404);
+});
+
+test('stats include busiest hours, order methods and trends', async () => {
+  const st = (await call('GET', '/api/admin/stats', undefined, { auth: true })).json;
+  assert.equal(st.hours.length, 24);
+  assert.ok(st.hours.reduce((a, b) => a + b, 0) >= 1);
+  assert.deepEqual(Object.keys(st.methods).sort(), ['delivery', 'dineIn', 'pickup']);
+  assert.ok('change' in st.month && 'change' in st.today);
+});

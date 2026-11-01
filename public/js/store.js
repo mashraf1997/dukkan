@@ -13,6 +13,9 @@
   const esc = (s) =>
     String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+  const ic = (name) => `<svg class="i" aria-hidden="true"><use href="${D.icons}#i-${name}"/></svg>`;
+  const METHOD_ICON = { delivery: 'truck', pickup: 'store', dineIn: 'chair' };
+
   const PREFIX = ['$', '€', '£', '¥', '₹', '₺', 'R$', 'US$', 'C$', 'A$'];
   const money = (n) => {
     const v = Math.round((Number(n) || 0) * 100) / 100;
@@ -74,17 +77,47 @@
     renderCartBar();
   }
 
-  function addToCart(id, variant, qty) {
+  function addToCart(id, variant, qty, fromEl) {
     const key = `${id}|${variant || ''}`;
     const line = cart.find((l) => `${l.id}|${l.variant || ''}` === key);
     if (line) line.qty += qty;
     else cart.push({ id, variant: variant || '', qty });
     saveCart();
     const bar = $('#cartbar button');
-    bar.classList.remove('bump');
-    void bar.offsetWidth;
-    bar.classList.add('bump');
-    toast(`✓ ${products.get(id).name}`);
+    flyToCart(fromEl, products.get(id)).then(() => {
+      bar.classList.remove('bump');
+      void bar.offsetWidth;
+      bar.classList.add('bump');
+    });
+    if (navigator.vibrate) navigator.vibrate(12);
+    toast(products.get(id).name);
+  }
+
+  // A copy of the product picture flies from the card into the cart bar.
+  function flyToCart(fromEl, p) {
+    const target = $('#cartbar .bag');
+    if (!fromEl || !target || !fromEl.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+    const a = fromEl.getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    if (!a.width || !b.width) return Promise.resolve();
+    const size = Math.min(a.width, a.height, 90);
+    const ghost = document.createElement('div');
+    ghost.className = 'fly';
+    ghost.style.cssText = `width:${size}px;height:${size}px;left:${a.left + a.width / 2 - size / 2}px;top:${a.top + a.height / 2 - size / 2}px;--h:${p.hue}`;
+    ghost.style.background = getComputedStyle(fromEl).background;
+    ghost.innerHTML = thumbHtml(p);
+    document.body.appendChild(ghost);
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const anim = ghost.animate(
+      [
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 80}px) scale(.7)`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: 0.4 },
+      ],
+      { duration: 650, easing: 'cubic-bezier(.5,0,.3,1)' }
+    );
+    return anim.finished.then(() => ghost.remove(), () => ghost.remove());
   }
 
   function renderCartBar() {
@@ -97,7 +130,7 @@
   let toastTimer;
   function toast(msg) {
     const el = $('#toast');
-    el.textContent = msg;
+    el.innerHTML = `${ic('check')}<span>${esc(msg)}</span>`;
     el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
@@ -124,9 +157,44 @@
 
   function closeSheet() {
     sheet.hidden = true;
+    $('.panel', sheet).style.transform = '';
     document.body.style.overflow = '';
     if (lastFocus) lastFocus.focus({ preventScroll: true });
   }
+
+  // Swipe the sheet down to close it (phones).
+  (() => {
+    const panel = $('.panel', sheet);
+    let startY = null;
+    let dy = 0;
+    panel.addEventListener('touchstart', (e) => {
+      if (panel.scrollTop > 0 || e.touches.length !== 1 || e.target.closest('input,textarea,select,.options,.methods')) return;
+      startY = e.touches[0].clientY;
+      dy = 0;
+    }, { passive: true });
+    panel.addEventListener('touchmove', (e) => {
+      if (startY === null) return;
+      dy = Math.max(0, e.touches[0].clientY - startY);
+      if (dy > 0) {
+        panel.classList.add('dragging');
+        panel.style.transform = `translateY(${dy}px)`;
+      }
+    }, { passive: true });
+    panel.addEventListener('touchend', () => {
+      if (startY === null) return;
+      panel.classList.remove('dragging');
+      if (dy > 110) {
+        panel.classList.add('closing');
+        panel.style.transform = 'translateY(100%)';
+        setTimeout(() => { panel.classList.remove('closing'); closeSheet(); }, 200);
+      } else {
+        panel.classList.add('closing');
+        panel.style.transform = '';
+        setTimeout(() => panel.classList.remove('closing'), 220);
+      }
+      startY = null;
+    });
+  })();
 
   sheet.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) closeSheet();
@@ -137,6 +205,7 @@
 
   const thumbHtml = (p) =>
     p.image ? `<img src="${esc(p.image)}" alt="">` : `<span class="emoji">${esc(p.emoji || p.name.charAt(0))}</span>`;
+  let lastAddSource = null;
 
   // ---------- product sheet ----------
   function openProduct(id) {
@@ -145,7 +214,7 @@
     let qty = 1;
     const hasVariants = p.variants.length > 0;
     const html = `
-      <div class="p-hero">${thumbHtml(p)}</div>
+      <div class="p-hero" style="--h:${p.hue}">${thumbHtml(p)}</div>
       <h2 id="sheet-title">${esc(p.name)}</h2>
       ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
       ${hasVariants
@@ -158,7 +227,7 @@
         : `<p class="price" style="font-size:20px;margin:12px 0">${esc(money(p.price))}${p.comparePrice ? ` <s class="compare">${esc(money(p.comparePrice))}</s>` : ''}</p>`}
       ${p.available
         ? `<div class="row end">
-            <div class="stepper"><button type="button" data-q="-1" aria-label="-">−</button><span id="pq">1</span><button type="button" data-q="1" aria-label="+">+</button></div>
+            <div class="stepper"><button type="button" data-q="-1" aria-label="-">${ic('minus')}</button><span id="pq">1</span><button type="button" data-q="1" aria-label="+">${ic('plus')}</button></div>
             <button class="btn" type="button" id="padd" style="flex:1"></button>
           </div>`
         : `<p class="warn">${esc(t.soldOut)}</p>`}`;
@@ -180,8 +249,9 @@
         })
       );
       btn.addEventListener('click', () => {
-        addToCart(p.id, selected(), qty);
+        const from = lastAddSource;
         closeSheet();
+        addToCart(p.id, selected(), qty, from);
       });
       update();
     });
@@ -201,7 +271,7 @@
       <div id="checkout">
         ${shop.methods.length > 1
           ? `<div class="field"><span>${esc(t.orderMethod)}</span><div class="methods">${shop.methods
-              .map((m) => `<label><input type="radio" name="method" value="${m}" ${m === method ? 'checked' : ''}>${esc(t[m])}</label>`)
+              .map((m) => `<label><input type="radio" name="method" value="${m}" ${m === method ? 'checked' : ''}>${ic(METHOD_ICON[m])}${esc(t[m])}</label>`)
               .join('')}</div></div>`
           : ''}
         <form id="form" novalidate>
@@ -221,7 +291,7 @@
           <div class="summary" id="summary"></div>
           <div id="minwarn"></div>
           <button class="btn wa" type="submit" id="send">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1s-.5-.1-.7.1-.8 1-.9 1.2-.3.2-.6.1a8.2 8.2 0 0 1-2.4-1.5 9 9 0 0 1-1.7-2.1c-.2-.3 0-.5.1-.6l.4-.5.3-.5v-.5c0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.4 3.4 0 0 0-1 2.5 5.9 5.9 0 0 0 1.2 3.1 13.5 13.5 0 0 0 5.2 4.6c1.9.8 2.7.9 3.6.8a3.1 3.1 0 0 0 2-1.4 2.5 2.5 0 0 0 .2-1.4c-.1-.2-.3-.2-.6-.4zM12 21.8a9.9 9.9 0 0 1-5-1.4l-.4-.2-3.7 1 1-3.6-.2-.4A9.8 9.8 0 1 1 12 21.8zM12 0a12 12 0 0 0-10.3 18L0 24l6.2-1.6A12 12 0 1 0 12 0z"/></svg>
+            ${ic('whatsapp')}
             <span>${esc(t.sendOrder)}</span>
           </button>
           <p class="err" id="err" role="alert"></p>
@@ -248,9 +318,9 @@
           .map((l, i) => {
             const p = products.get(l.id);
             return `<li>
-              <div class="l-name"><b>${esc(p.name)}</b>${l.variant ? `<small>${esc(l.variant)}</small>` : ''}</div>
-              <div class="stepper"><button type="button" data-line="${i}" data-d="-1" aria-label="-">${l.qty === 1 ? '🗑' : '−'}</button><span>${l.qty}</span><button type="button" data-line="${i}" data-d="1" aria-label="+">+</button></div>
-              <div class="l-price">${esc(money(unitPrice(l) * l.qty))}</div>
+              <div class="l-thumb" style="--h:${p.hue}">${thumbHtml(p)}</div>
+              <div class="l-name"><b>${esc(p.name)}</b>${l.variant ? `<small>${esc(l.variant)}</small>` : ''}<small>${esc(money(unitPrice(l) * l.qty))}</small></div>
+              <div class="stepper"><button type="button" data-line="${i}" data-d="-1" aria-label="-">${ic(l.qty === 1 ? 'trash' : 'minus')}</button><span>${l.qty}</span><button type="button" data-line="${i}" data-d="1" aria-label="+">${ic('plus')}</button></div>
             </li>`;
           })
           .join('');
@@ -398,26 +468,41 @@
   function showDone(data) {
     openSheet(`
       <div class="done">
-        <div class="big">🎉</div>
+        <div class="confetti">${confetti()}</div>
+        <svg class="check-anim" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44"/><path d="M30 52 l14 14 l27 -30"/></svg>
         <h2 id="sheet-title">${esc(t.orderSent)}</h2>
         <div class="no">${esc(t.orderNo)} #${esc(data.no)} · ${esc(money(data.total))}</div>
         <p class="muted">${esc(t.orderSentHint)}</p>
-        <a class="btn wa" href="${esc(data.whatsappUrl)}" target="_blank" rel="noopener">${esc(t.openWhatsApp)}</a>
+        <a class="btn wa" href="${esc(data.whatsappUrl)}" target="_blank" rel="noopener">${ic('whatsapp')}${esc(t.openWhatsApp)}</a>
         <button class="btn ghost" type="button" data-close>${esc(t.backToMenu)}</button>
       </div>`);
+  }
+
+  function confetti() {
+    const colors = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', getComputedStyle(document.documentElement).getPropertyValue('--brand')];
+    let out = '';
+    for (let i = 0; i < 28; i++) {
+      const left = 10 + Math.random() * 80;
+      const dx = Math.round((Math.random() - 0.5) * 160);
+      const rot = Math.round(Math.random() * 720 - 360);
+      const delay = (Math.random() * 0.25).toFixed(2);
+      out += `<i style="left:${left}%;background:${colors[i % colors.length]};--dx:${dx}px;--rot:${rot}deg;animation-delay:${delay}s"></i>`;
+    }
+    return out;
   }
 
   // ---------- menu interactions ----------
   $('#menu').addEventListener('click', (e) => {
     const add = e.target.closest('[data-add]');
+    const card = e.target.closest('.card');
+    if (card) lastAddSource = $('.thumb', card);
     if (add) {
       e.stopPropagation();
       const p = products.get(add.dataset.add);
       if (p.variants.length) openProduct(p.id);
-      else addToCart(p.id, '', 1);
+      else addToCart(p.id, '', 1, lastAddSource);
       return;
     }
-    const card = e.target.closest('.card');
     if (card) openProduct(card.dataset.id);
   });
   $('#menu').addEventListener('keydown', (e) => {
@@ -445,6 +530,8 @@
       if (visible) any = true;
     });
     $('#no-results').hidden = any || !$$('.cat').length;
+    const feat = $('#featured');
+    if (feat) feat.classList.toggle('hidden', !!term);
   });
 
   // Highlight the category chip for the section in view
@@ -465,6 +552,53 @@
       { rootMargin: '-140px 0px -60% 0px' }
     );
     $$('.cat').forEach((s) => io.observe(s));
+  }
+
+  // Share the store link (native share sheet on phones, copy elsewhere).
+  const shareBtn = $('#share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = location.origin + location.pathname;
+      try {
+        if (navigator.share) await navigator.share({ title: shop.name, url });
+        else {
+          await navigator.clipboard.writeText(url);
+          toast(t.linkCopied);
+        }
+      } catch { /* cancelled */ }
+    });
+  }
+
+  // Hairline under the toolbar once it sticks.
+  const toolbar = $('.toolbar');
+  const onScroll = () => toolbar.classList.toggle('stuck', toolbar.getBoundingClientRect().top <= 0 && scrollY > 0);
+  addEventListener('scroll', onScroll, { passive: true });
+
+  // Live preview from the admin's appearance screen (same origin only).
+  if (D.preview) {
+    addEventListener('message', (e) => {
+      if (e.origin !== location.origin || !e.data || e.data.type !== 'dukkan-preview') return;
+      const d = e.data;
+      if (d.theme) document.body.className = document.body.className.replace(/theme-\w+/, `theme-${d.theme}`);
+      if (d.color) document.documentElement.style.setProperty('--brand', d.color);
+      if (d.fontStack) document.documentElement.style.setProperty('--font', d.fontStack);
+      if (d.fontHref) $('#font-css').href = d.fontHref;
+      if ('logo' in d) $('#logo').innerHTML = d.logo ? `<img src="${esc(d.logo)}" alt="">` : `<span>${esc((shop.name || '?').charAt(0).toUpperCase())}</span>`;
+      if ('cover' in d) {
+        const cover = $('#cover');
+        cover.classList.toggle('has-img', !!d.cover);
+        const img = $('img', cover);
+        if (d.cover) {
+          if (img) img.src = d.cover;
+          else cover.insertAdjacentHTML('afterbegin', `<img src="${esc(d.cover)}" alt="">`);
+        } else if (img) img.remove();
+      }
+    });
+    // Links shouldn't navigate away inside the preview frame.
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]');
+      if (a && !a.getAttribute('href').startsWith('#')) e.preventDefault();
+    }, true);
   }
 
   // Language menu keeps other query params (e.g. ?table=4).

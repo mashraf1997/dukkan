@@ -22,7 +22,8 @@ const {
   whatsappUrl,
   STATUSES,
 } = require('./orders');
-const { renderStore, renderQrPrint, renderManifest } = require('./views');
+const { renderStore, renderQrPrint, renderReceipt, renderManifest } = require('./views');
+const { cleanTheme, cleanFont, appearanceOptions } = require('./theme');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -52,6 +53,8 @@ const SETTINGS_SCHEMA = {
   currency: (v) => str(v, 12),
   lang: (v) => (LANGS.includes(v) ? v : 'en'),
   color: (v) => (/^#[0-9a-f]{6}$/i.test(v) ? v : defaultSettings().color),
+  theme: cleanTheme,
+  font: cleanFont,
   acceptingOrders: bool,
   closedMessage: (v) => str(v, 200),
   delivery: bool,
@@ -202,11 +205,12 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     if (!store.db.setupDone) return res.redirect('/admin');
     const settings = store.settings;
     const lang = pickLang(req);
+    const preview = req.query.preview === '1';
 
     // Roughly one visit per browser per day; bots and admins' previews aside.
     const today = localDate();
     const cookies = req.headers.cookie || '';
-    if (!BOT_RE.test(req.get('user-agent') || '') && !cookies.includes(`dk_v=${today}`)) {
+    if (!preview && !BOT_RE.test(req.get('user-agent') || '') && !cookies.includes(`dk_v=${today}`)) {
       store.recordVisit(today);
       res.append('Set-Cookie', `dk_v=${today}; Path=/; Max-Age=86400; SameSite=Lax`);
     }
@@ -224,6 +228,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
       opensAt: settings.acceptingOrders && !open ? nextOpeningLabel(settings.schedule, lang) : '',
       hasCoupons: store.db.coupons.some((c) => c.active),
       demo: !!demo,
+      preview,
       languages: LANGUAGES,
     });
     res.setHeader('Cache-Control', 'no-cache');
@@ -325,6 +330,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
       baseUrl: baseUrl(req),
       open: canOrder(store.settings),
       demo: !!demo,
+      appearance: appearanceOptions(store.settings.lang),
     });
   });
 
@@ -540,6 +546,14 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     res.type('html').send(renderQrPrint({ settings: store.settings, items, lang: store.settings.lang }));
   });
 
+  // Printable 80mm receipt for one order.
+  app.get('/admin/receipt/:id', (req, res) => {
+    if (!auth.isAuthenticated(req, store.db)) return res.redirect('/admin');
+    const order = store.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).type('text').send('Not found');
+    res.type('html').send(renderReceipt({ settings: store.settings, order, lang: store.settings.lang }));
+  });
+
   app.use((req, res) => res.status(404).type('text').send('Not found'));
 
   // eslint-disable-next-line no-unused-vars
@@ -570,9 +584,23 @@ function computeStats(store) {
   const since = (ms) => valid.filter((o) => Date.parse(o.createdAt) >= ms);
   const sum = (list) => Math.round(list.reduce((s, o) => s + o.total, 0) * 100) / 100;
 
+  const between = (from, to) => valid.filter((o) => {
+    const t = Date.parse(o.createdAt);
+    return t >= from && t < to;
+  });
   const today = since(dayStart.getTime());
   const week = since(now - 7 * 864e5);
   const month = since(now - 30 * 864e5);
+  const prevMonth = between(now - 60 * 864e5, now - 30 * 864e5);
+  const yesterday = between(dayStart.getTime() - 864e5, now - 864e5);
+
+  // When people order: by hour of day, and by method (last 30 days).
+  const hours = Array(24).fill(0);
+  const methods = { delivery: 0, pickup: 0, dineIn: 0 };
+  for (const o of month) {
+    hours[new Date(o.createdAt).getHours()]++;
+    if (o.method in methods) methods[o.method]++;
+  }
 
   const top = new Map();
   for (const o of month) {
@@ -598,15 +626,27 @@ function computeStats(store) {
 
   // Visits: last 30 days, keyed by local date.
   let visits30 = 0;
+  let visitsPrev = 0;
   for (let d = 0; d < 30; d++) visits30 += store.stats.visits[localDate(new Date(now - d * 864e5))] || 0;
+  for (let d = 30; d < 60; d++) visitsPrev += store.stats.visits[localDate(new Date(now - d * 864e5))] || 0;
+  // % change; hidden when the previous period is too small to compare meaningfully.
+  const change = (cur, prev, minPrev = 0) => (prev && prev >= minPrev ? Math.round(((cur - prev) / prev) * 100) : null);
   const visitsToday = store.stats.visits[localDate()] || 0;
   const conversion = visits30 ? Math.min(100, Math.round((month.length / visits30) * 1000) / 10) : 0;
 
   return {
-    today: { orders: today.length, revenue: sum(today) },
+    today: { orders: today.length, revenue: sum(today), change: change(today.length, yesterday.length, 5) },
     week: { orders: week.length, revenue: sum(week) },
-    month: { orders: month.length, revenue: sum(month), avg: month.length ? Math.round((sum(month) / month.length) * 100) / 100 : 0 },
-    visits: { today: visitsToday, month: visits30, conversion },
+    month: {
+      orders: month.length,
+      revenue: sum(month),
+      avg: month.length ? Math.round((sum(month) / month.length) * 100) / 100 : 0,
+      change: change(sum(month), sum(prevMonth)),
+      avgChange: change(month.length ? sum(month) / month.length : 0, prevMonth.length ? sum(prevMonth) / prevMonth.length : 0),
+    },
+    visits: { today: visitsToday, month: visits30, conversion, change: change(visits30, visitsPrev, 20) },
+    hours,
+    methods,
     newOrders: store.orders.filter((o) => o.status === 'new').length,
     top: [...top.values()].sort((a, b) => b.qty - a.qty).slice(0, 5),
     days,

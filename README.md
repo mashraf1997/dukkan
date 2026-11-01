@@ -29,6 +29,14 @@ No app to install for customers. No commission per order. Your data stays on you
 
 ## Features
 
+<img src="docs/themes.png" alt="Four storefront themes" width="100%">
+
+**Design**
+- 🎨 **4 themes** — Modern, Photo grid, Elegant (dark, printed-menu style) and Bold — plus **5 fonts** that all support Arabic, and any brand colour
+- 📱 **Live phone preview** in the admin: see every change instantly, publish when you're happy
+- ✨ Polished details: storefront header with live *Open now* status and one-tap WhatsApp / call / map / share, a *Popular* carousel, products that fly into the cart, swipe-down sheets, an animated order confirmation
+- 🖼️ No photos yet? Every item gets its own soft colour tile behind its emoji, so the menu still looks designed
+
 **For customers**
 - ⚡ Fast, mobile-first menu (server-rendered, no framework, works on cheap phones)
 - 🌍 **8 languages** — English, العربية (RTL), Español, Português, Français, Türkçe, Bahasa Indonesia, हिन्दी — switchable from the menu
@@ -41,8 +49,8 @@ No app to install for customers. No commission per order. Your data stays on you
 
 **For shop owners**
 - 🧙 1-minute setup wizard with an optional sample menu
-- 📊 Dashboard: today's orders, 30-day sales, average order, **visitors & conversion rate**, best sellers, 14-day chart
-- 🧾 Order inbox with statuses (new → confirmed → done), sound alert on new orders, one-tap chat with the customer
+- 📊 Dashboard: KPIs with **trends vs the previous period**, interactive 14-day chart (orders or revenue), **busiest hours**, how customers order (delivery / pickup / dine-in), **visitors & conversion rate**, best sellers
+- 🧾 Order inbox with statuses (new → confirmed → done), sound alert on new orders, one-tap chat with the customer, **80 mm receipt printing** for kitchen / cashier printers
 - 🍽️ Menu manager: categories, photos (auto-compressed in the browser) or emoji, sizes, "featured" badge, sold-out toggle, reordering
 - 📄 **Import / export the menu from Excel or Google Sheets** (CSV) — great for big menus
 - 🕒 **Opening hours schedule** — the shop opens and closes itself (time-zone aware, hours past midnight supported)
@@ -70,9 +78,9 @@ No app to install for customers. No commission per order. Your data stays on you
 |---|---|---|
 | <img src="docs/admin-dashboard.png" width="320"> | <img src="docs/admin-orders.png" width="320"> | <img src="docs/admin-menu.png" width="320"> |
 
-| Delivery areas & opening hours | Discount codes & QR |
-|---|---|
-| <img src="docs/admin-settings.png" width="480"> | <img src="docs/admin-grow.png" width="480"> |
+| Design with live preview | Delivery areas & opening hours | Discount codes & QR |
+|---|---|---|
+| <img src="docs/admin-design.png" width="320"> | <img src="docs/admin-settings.png" width="320"> | <img src="docs/admin-grow.png" width="320"> |
 
 What the shop receives on WhatsApp:
 
@@ -221,7 +229,10 @@ src/orders.js        cart validation, pricing, discounts, WhatsApp message
 src/schedule.js      opening hours
 src/csv.js           Excel / CSV import & export
 src/demo.js          demo mode
-src/views.js         server-rendered storefront & QR posters
+src/views.js         server-rendered storefront, QR posters & receipts
+src/theme.js         themes & fonts
+public/css/store.css storefront styles (one block per theme)
+public/img/icons.svg SVG icon sprite
 src/i18n.js          loads locales/*.json
 locales/             one JSON file per language
 public/              storefront & admin (vanilla JS + CSS)
@@ -239,6 +250,7 @@ Copy `locales/en.json` to `locales/<code>.json`, translate the values, and set `
 - [x] Discount codes
 - [x] Import menu from Excel / CSV
 - [x] Automatic HTTPS
+- [x] Storefront themes, fonts & live preview
 - [ ] Telegram / email notification for new orders
 - [ ] Add-ons per product (extra cheese, sauces…)
 - [ ] Multiple branches
