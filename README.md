@@ -66,6 +66,7 @@ No app to install for customers. No commission per order. Your data stays on you
 - **Automatic HTTPS** with Caddy — just set your domain
 - **Setup code** protects a fresh install from being claimed by someone else
 - **Demo mode** for a public, self-resetting showcase
+- **Agency mode**: one server hosts many clients, each on their own domain ([details](#agency-mode-host-all-your-clients-on-one-server))
 - Prices are always recalculated server-side, inputs sanitized, sessions signed, login rate-limited
 - Docker image for `amd64` and `arm64`, health check included, tested on Node 18–24
 
@@ -155,6 +156,29 @@ npm start
 
 Open <http://localhost:3000/admin> and use the setup code printed in the terminal.
 
+## Agency mode: host all your clients on one server
+
+Freelancers and agencies can run **one Dukkan server for many clients**. Each client gets their own fully separate shop (own admin, password, data and photos) at `client.yourdomain.com` or their own domain, with automatic HTTPS. You manage everyone from one panel at `/hub`.
+
+<img src="docs/hub.png" alt="Agency panel" width="100%">
+
+- ➕ **New client in seconds**: pick a name and address, then send the link and setup code on WhatsApp in one tap
+- 🌐 **Subdomains or custom domains**, with HTTPS certificates issued automatically on the first visit
+- 💰 **Billing tracker**: monthly fee, *paid until*, due-soon and overdue lists, and a one-tap *Paid +1 month*
+- ⏸️ **Suspend** clients who don't pay (their page shows "temporarily unavailable") and resume them in one click
+- 🔑 **Reset a client's password** when they forget it, plus orders per client for the last 30 days
+- 🗑️ Deleting a client moves their data to a `trash/` folder instead of erasing it
+
+**Set up** (with [`examples/agency/`](examples/agency)):
+
+1. Point two DNS records at your server: `apps.example.com` and the wildcard `*.apps.example.com`.
+2. Run the compose file with `BASE_DOMAIN=apps.example.com`.
+3. Open `https://apps.example.com/hub` and enter the setup code from `docker compose logs dukkan`.
+
+Clients then live at `https://<name>.apps.example.com`. To use a client's own domain, add it in the panel and have them point its A record at your server. Caddy only requests certificates for addresses the panel knows about (`/_hub/tls-check`), so nobody can make your server request certificates for other domains.
+
+To try it locally, run `HUB_MODE=true npm start` and open `http://localhost:3000/hub`. Clients work at `http://<name>.localhost:3000` in Chrome and Firefox.
+
 ## Configuration
 
 Everything else is configured from the admin panel (`/admin`). Environment variables:
@@ -171,6 +195,9 @@ Everything else is configured from the admin panel (`/admin`). Environment varia
 | `DEMO_PASSWORD` | `demo1234` | Admin password shown to demo visitors |
 | `DEMO_RESET_MINUTES` | `60` | How often the demo wipes itself and re-seeds |
 | `DEMO_LANG` | `en` | Language of the demo shop |
+| `HUB_MODE` | `false` | `true` turns the server into an [agency hub](#agency-mode-host-all-your-clients-on-one-server) for many clients |
+| `BASE_DOMAIN` | `localhost` | Agency mode: clients get `<name>.BASE_DOMAIN` |
+| `HUB_DOMAIN` | *(empty)* | Agency mode: only show the panel on this host |
 
 ### Import a menu from Excel / Google Sheets
 
