@@ -51,6 +51,7 @@ No app to install for customers. No commission per order. Your data stays on you
 - 🧙 1-minute setup wizard with an optional sample menu
 - 📊 Dashboard: KPIs with **trends vs the previous period**, interactive 14-day chart (orders or revenue), **busiest hours**, how customers order (delivery / pickup / dine-in), **visitors & conversion rate**, best sellers
 - 🧾 Order inbox with statuses (new → confirmed → done), sound alert on new orders, one-tap chat with the customer, **80 mm receipt printing** for kitchen / cashier printers
+- 📲 **Instant Telegram notifications** for every new order, free with your own bot ([how](#telegram-notifications))
 - 🍽️ Menu manager: categories, photos (auto-compressed in the browser) or emoji, sizes, "featured" badge, sold-out toggle, reordering
 - 📄 **Import / export the menu from Excel or Google Sheets** (CSV) — great for big menus
 - 🕒 **Opening hours schedule** — the shop opens and closes itself (time-zone aware, hours past midnight supported)
@@ -190,6 +191,22 @@ docker run -d -p 80:3000 -e DEMO_MODE=true ghcr.io/mashraf1997/dukkan:latest
 
 Visitors can log in with the password shown on screen and try everything; password changes and backup restores are disabled, and the whole shop resets every hour with sample orders, visitors and a `WELCOME10` discount code.
 
+### Telegram notifications
+
+Get a free, instant message on your phone for every new order, even when the admin panel is closed:
+
+1. In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot` and copy the token it gives you.
+2. Paste the token in **Settings → Instant notifications (Telegram)**, then open your new bot and press **Start**.
+3. Press **Find my chat**, then **Send test**.
+
+The message includes a link straight to the order inbox. To send notifications to a group, add the bot to the group and send a message there before pressing *Find my chat*. The bot token is stored on your server only: it's never shown again in the browser and is left out of backups.
+
+### Multiple branches
+
+Each branch runs its own copy of Dukkan: its own admin, menu, data and WhatsApp number, usually on its own subdomain (`downtown.example.com`, `mall.example.com`…). Copies are tiny (about 60 MB of RAM each), so one small VPS can run many.
+
+[`examples/branches/`](examples/branches) has a ready-to-use `docker-compose.yml` and `Caddyfile` for two branches behind automatic HTTPS. To add a branch, copy a service block, give it a new volume, and add one line to the `Caddyfile`. Point each subdomain's DNS at the server, run `docker compose up -d`, and open each subdomain's `/admin` to set it up. On a Hostinger VPS you can also deploy the template several times instead.
+
 ### Data & backups
 
 All data lives in `DATA_DIR`:
@@ -251,9 +268,10 @@ Copy `locales/en.json` to `locales/<code>.json`, translate the values, and set `
 - [x] Import menu from Excel / CSV
 - [x] Automatic HTTPS
 - [x] Storefront themes, fonts & live preview
-- [ ] Telegram / email notification for new orders
+- [x] Telegram notifications for new orders
 - [ ] Add-ons per product (extra cheese, sauces…)
-- [ ] Multiple branches
+- [x] Multiple branches (one instance per branch, [example](examples/branches))
+- [ ] Email notifications
 
 ## License
 

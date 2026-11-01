@@ -295,6 +295,24 @@
     "authTagline": "Toko WhatsApp milikmu sendiri. Tanpa komisi, selamanya.",
     "authPoint1": "Pesanan masuk ke WhatsApp, bernomor dan lengkap harganya",
     "authPoint2": "Menu QR untuk setiap meja",
-    "authPoint3": "8 bahasa, domainmu, datamu"
+    "authPoint3": "8 bahasa, domainmu, datamu",
+    "notifications": "Notifikasi instan (Telegram)",
+    "notifyHint": "Dapatkan pesan di HP begitu ada yang baru, gratis, lewat bot Telegram milikmu sendiri.",
+    "notifyStep1": "Di Telegram, buka @BotFather, kirim /newbot, lalu salin token yang diberikan.",
+    "notifyStep2": "Tempel token di bawah, lalu buka bot barumu dan tekan Mulai.",
+    "notifyStep3": "Tekan “Cari chat saya”, lalu kirim tes.",
+    "botToken": "Token bot",
+    "tokenSaved": "Tersimpan ({hint}) — tempel token baru untuk menggantinya",
+    "chatId": "ID chat",
+    "detectChat": "Cari chat saya",
+    "chatFound": "Chat ditemukan ✓",
+    "chatNotFound": "Belum ada chat — buka bot di Telegram dan tekan Mulai dulu.",
+    "sendTest": "Kirim tes",
+    "testSent": "Pesan tes terkirim ✓",
+    "testFailed": "Gagal mengirim — periksa token dan ID chat",
+    "testMessage": "Kalau kamu bisa membaca ini, notifikasi berfungsi 🎉",
+    "notifyConnected": "Terhubung",
+    "disconnect": "Putuskan",
+    "invalidToken": "Itu bukan seperti token bot"
   }
 }

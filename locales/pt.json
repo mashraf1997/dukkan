@@ -295,6 +295,24 @@
     "authTagline": "Sua própria loja no WhatsApp. Sem comissões, nunca.",
     "authPoint1": "Pedidos chegam no WhatsApp, numerados e com preço",
     "authPoint2": "Cardápio QR para cada mesa",
-    "authPoint3": "8 idiomas, seu domínio, seus dados"
+    "authPoint3": "8 idiomas, seu domínio, seus dados",
+    "notifications": "Notificações instantâneas (Telegram)",
+    "notifyHint": "Receba uma mensagem no celular assim que chegar algo novo, grátis, pelo seu próprio bot do Telegram.",
+    "notifyStep1": "No Telegram, abra o @BotFather, envie /newbot e copie o token que ele der.",
+    "notifyStep2": "Cole o token abaixo, depois abra seu novo bot e toque em Iniciar.",
+    "notifyStep3": "Toque em “Encontrar meu chat” e envie um teste.",
+    "botToken": "Token do bot",
+    "tokenSaved": "Salvo ({hint}) — cole um novo para substituir",
+    "chatId": "ID do chat",
+    "detectChat": "Encontrar meu chat",
+    "chatFound": "Chat encontrado ✓",
+    "chatNotFound": "Nenhum chat ainda — abra seu bot no Telegram e toque em Iniciar primeiro.",
+    "sendTest": "Enviar teste",
+    "testSent": "Mensagem de teste enviada ✓",
+    "testFailed": "Não foi possível enviar — confira o token e o ID do chat",
+    "testMessage": "Se você está lendo isto, as notificações funcionam 🎉",
+    "notifyConnected": "Conectado",
+    "disconnect": "Desconectar",
+    "invalidToken": "Isso não parece um token de bot"
   }
 }

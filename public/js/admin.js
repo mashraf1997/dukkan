@@ -681,6 +681,55 @@
     try { return Intl.supportedValuesOf('timeZone'); } catch { return []; }
   };
 
+  // ---- Telegram notifications card (Settings) ----
+  async function renderNotify(box) {
+    const n = await api('GET', '/api/admin/notify');
+    box.innerHTML = `
+      <h3>${ic('bell')}${esc(T('notifications'))}${n.connected ? `<span class="ok-chip">${ic('check')}${esc(T('notifyConnected'))}</span>` : ''}</h3>
+      <p class="muted small" style="margin-top:-6px">${esc(T('notifyHint'))}</p>
+      <ol class="steps-list"><li>${esc(T('notifyStep1'))}</li><li>${esc(T('notifyStep2'))}</li><li>${esc(T('notifyStep3'))}</li></ol>
+      <form id="nf">
+        <label class="field"><span>${esc(T('botToken'))}</span><input name="token" autocomplete="off" spellcheck="false" placeholder="123456789:AA…" dir="ltr">${n.hasToken ? `<small>${esc(T('tokenSaved').replace('{hint}', n.tokenHint))}</small>` : ''}</label>
+        <div class="share-row" style="align-items:flex-end">
+          <label class="field" style="flex:1;margin:0"><span>${esc(T('chatId'))}</span><input name="chat" value="${esc(n.telegramChat)}" dir="ltr"></label>
+          <button class="btn line" type="button" id="ndetect">${ic('search')}${esc(T('detectChat'))}</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn" type="submit">${ic('check')}${esc(T('save'))}</button>
+          <button class="btn line" type="button" id="ntest" ${n.connected ? '' : 'disabled'}>${ic('bell')}${esc(T('sendTest'))}</button>
+          ${n.hasToken ? `<button class="btn danger" type="button" id="nclear">${esc(T('disconnect'))}</button>` : ''}
+        </div>
+      </form>`;
+    const f = $('#nf', box);
+    const fail = (err, fallback) => toast(err.code === 'demo' ? T('demoBlocked') : err.code === 'invalid_token' ? T('invalidToken') : T(fallback), true);
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('PUT', '/api/admin/notify', { telegramToken: f.token.value, telegramChat: f.chat.value });
+        toast(T('saved'));
+        renderNotify(box);
+      } catch (err) { fail(err, 'error'); }
+    });
+    $('#ndetect', box).addEventListener('click', async () => {
+      try {
+        const r = await api('POST', '/api/admin/notify/detect', { telegramToken: f.token.value });
+        if (!r.chats.length) return toast(T('chatNotFound'), true);
+        f.chat.value = r.chats[0].id;
+        toast(`${T('chatFound')} ${r.chats[0].name}`);
+      } catch (err) { fail(err, 'chatNotFound'); }
+    });
+    $('#ntest', box).addEventListener('click', async () => {
+      try {
+        await api('POST', '/api/admin/notify/test', { text: T('testMessage') });
+        toast(T('testSent'));
+      } catch (err) { fail(err, 'testFailed'); }
+    });
+    const clear = $('#nclear', box);
+    if (clear) clear.addEventListener('click', async () => {
+      try { await api('PUT', '/api/admin/notify', { clear: true }); renderNotify(box); } catch (err) { fail(err, 'error'); }
+    });
+  }
+
   VIEWS.settings = async (view) => {
     const s = state.data.settings;
     view.innerHTML = `
@@ -754,6 +803,7 @@
         <div style="position:sticky;bottom:80px;z-index:5;margin-bottom:16px"><button class="btn block" type="submit">${ic('check')}${esc(T('save'))}</button></div>
       </form>
 
+      <div class="card" id="notify-card"></div>
       <div class="card">
         <h3>${ic('lock')}${esc(T('security'))}</h3>
         <form id="pwform" class="grid2">
@@ -771,6 +821,7 @@
         </div>
       </div>`;
 
+    renderNotify($('#notify-card', view));
     const form = $('#sform');
 
     $('#zadd').addEventListener('click', () => {

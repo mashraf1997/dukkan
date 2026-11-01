@@ -24,6 +24,7 @@ const {
 } = require('./orders');
 const { renderStore, renderQrPrint, renderReceipt, renderManifest } = require('./views');
 const { cleanTheme, cleanFont, appearanceOptions } = require('./theme');
+const notify = require('./notify');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -257,6 +258,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     if (result.error) return res.status(400).json(result);
     const order = store.addOrder(result.order);
     const text = whatsappMessage(order, store.settings);
+    notify.notifyInBackground(store.db.notify, `${text}\n\n🔗 ${baseUrl(req)}admin#orders`);
     res.json({ no: order.no, total: order.total, whatsappUrl: whatsappUrl(store.settings.whatsapp, text) });
   });
 
@@ -320,6 +322,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
   // ---------- admin API ----------
   const admin = express.Router();
   admin.use(requireAuth);
+  notify.mountRoutes(admin, store, { guard: notInDemo, appName: 'Dukkan' });
 
   admin.get('/data', (req, res) => {
     res.json({
