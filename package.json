@@ -1,6 +1,6 @@
 {
   "name": "dukkan",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Your own WhatsApp ordering store in 2 minutes. Self-hosted menu & catalog with QR codes, 8 languages, discount codes, opening hours, zero commissions.",
   "main": "server.js",
   "license": "MIT",
@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "nodemailer": "^6.10.1",
     "qrcode": "^1.5.4"
   }
 }

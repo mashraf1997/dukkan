@@ -440,11 +440,14 @@
           cart = [];
           saveCart();
           showDone(data);
-          // New tab keeps the confirmation visible; fall back if popups are blocked.
-          // ('noopener' would make window.open return null, so detach manually.)
-          const win = window.open(data.whatsappUrl, '_blank');
-          if (win) win.opener = null;
-          else window.location.href = data.whatsappUrl;
+          // Paying online: the customer stays here to pay; WhatsApp stays one tap away.
+          if (!data.payOnline) {
+            // New tab keeps the confirmation visible; fall back if popups are blocked.
+            // ('noopener' would make window.open return null, so detach manually.)
+            const win = window.open(data.whatsappUrl, '_blank');
+            if (win) win.opener = null;
+            else window.location.href = data.whatsappUrl;
+          }
         } catch (ex) {
           const messages = {
             closed: shop.closedText || t.closed,
@@ -472,10 +475,50 @@
         <svg class="check-anim" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44"/><path d="M30 52 l14 14 l27 -30"/></svg>
         <h2 id="sheet-title">${esc(t.orderSent)}</h2>
         <div class="no">${esc(t.orderNo)} #${esc(data.no)} · ${esc(money(data.total))}</div>
-        <p class="muted">${esc(t.orderSentHint)}</p>
-        <a class="btn wa" href="${esc(data.whatsappUrl)}" target="_blank" rel="noopener">${ic('whatsapp')}${esc(t.openWhatsApp)}</a>
+        <p class="muted">${esc(data.payOnline ? t.payOnlineHint : t.orderSentHint)}</p>
+        ${data.payOnline ? `<button class="btn" type="button" id="pay-online">${ic('cash')}${esc(t.payOnline)}</button>` : ''}
+        <a class="btn wa${data.payOnline ? ' ghost-wa' : ''}" href="${esc(data.whatsappUrl)}" target="_blank" rel="noopener">${ic('whatsapp')}${esc(t.openWhatsApp)}</a>
         <button class="btn ghost" type="button" data-close>${esc(t.backToMenu)}</button>
-      </div>`);
+      </div>`, (el) => {
+      const pay = $('#pay-online', el);
+      if (pay) pay.addEventListener('click', () => payOrder(data.token, pay));
+    });
+  }
+
+  async function payOrder(token, btn) {
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(token)}/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Dukkan': '1' }, body: '{}' });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error);
+      location.href = r.url;
+    } catch {
+      toast(t.payFailed);
+      btn.disabled = false;
+    }
+  }
+
+  // Back from the payment page: show the order's payment status.
+  async function showPaymentResult() {
+    const q = new URLSearchParams(location.search);
+    const token = q.get('order');
+    if (!token) return;
+    history.replaceState(null, '', location.pathname + (q.get('table') ? `?table=${encodeURIComponent(q.get('table'))}` : ''));
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(token)}`);
+      if (!res.ok) return;
+      const o = await res.json();
+      openSheet(`<div class="done">
+        ${o.paid ? `<div class="confetti">${confetti()}</div><svg class="check-anim" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44"/><path d="M30 52 l14 14 l27 -30"/></svg>` : ''}
+        <h2 id="sheet-title">${esc(o.paid ? t.paidTitle : t.payConfirming)}</h2>
+        <div class="no">${esc(t.orderNo)} #${esc(o.no)} · ${esc(money(o.total))}</div>
+        ${!o.paid && o.status !== 'cancelled' ? `<button class="btn" type="button" id="pay-online">${ic('cash')}${esc(t.payOnline)}</button>` : ''}
+        <button class="btn ghost" type="button" data-close>${esc(t.backToMenu)}</button>
+      </div>`, (el) => {
+        const pay = $('#pay-online', el);
+        if (pay) pay.addEventListener('click', () => payOrder(token, pay));
+      });
+    } catch { /* offline */ }
   }
 
   function confetti() {
@@ -612,4 +655,5 @@
   }
 
   renderCartBar();
+  showPaymentResult();
 })();

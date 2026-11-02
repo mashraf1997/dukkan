@@ -94,6 +94,17 @@ function renderProduct(p, s, t, extraClass = '') {
 </article>`;
 }
 
+/** "Powered by" line; agencies can rename it or hide it (white-label). */
+function powered(s, t) {
+  const b = s._brand;
+  if (b && b.hideBranding) return '';
+  if (b && b.name) {
+    const u = safeUrl(b.url);
+    return `<p class="powered">${esc(t.poweredBy)} ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(b.name)}</a>` : esc(b.name)}</p>`;
+  }
+  return `<p class="powered">${esc(t.poweredBy)} <a href="https://github.com/mashraf1997/dukkan" target="_blank" rel="noopener">Dukkan</a></p>`;
+}
+
 function renderStore({
   settings: s,
   categories,
@@ -275,7 +286,7 @@ ${sections.length
     ${s.address ? `<p class="addr">${icon('pin')}${mapUrl ? `<a href="${esc(mapUrl)}" target="_blank" rel="noopener">${esc(s.address)}</a>` : esc(s.address)}</p>` : ''}
     ${s.hours ? `<p class="addr">${icon('clock')}${esc(s.hours)}</p>` : ''}
   </div>` : ''}
-  <p class="powered">${esc(t.poweredBy)} <a href="https://github.com/mashraf1997/dukkan" target="_blank" rel="noopener">Dukkan</a></p>
+  ${powered(s, t)}
 </footer>
 
 <div class="cartbar" id="cartbar" hidden>

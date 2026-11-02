@@ -640,3 +640,6 @@ main { max-width: 760px; margin: 0 auto; padding: 4px 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Online payment */
+.done .btn.ghost-wa { background: transparent; color: var(--wa, #128c4b); border: 1.5px solid currentColor; box-shadow: none; }

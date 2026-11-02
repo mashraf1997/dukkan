@@ -61,8 +61,9 @@ No app to install for customers. No commission per order. Your data stays on you
 - 💾 One-click backup & restore (JSON)
 
 **For the server**
-- Node.js + Express, **2 dependencies**, no database to set up (atomic JSON files)
-- Runs happily on the smallest VPS (~60 MB RAM)
+- 🔌 **Optional connections**: online payments (Paymob, Stripe), automatic WhatsApp messages, email, phone notifications, daily backups ([details](#connections-optional))
+- Node.js + Express, **3 dependencies**, no database to set up (atomic JSON files)
+- Runs happily on the smallest VPS (~70 MB RAM)
 - **Automatic HTTPS** with Caddy — just set your domain
 - **Setup code** protects a fresh install from being claimed by someone else
 - **Demo mode** for a public, self-resetting showcase
@@ -156,6 +157,48 @@ npm start
 
 Open <http://localhost:3000/admin> and use the setup code printed in the terminal.
 
+## Connections (optional)
+
+Everything works without these. Turn on only what you need in **Admin → Connections**. Keys and passwords stay on your server: they are never sent to the browser and never included in exports or backups.
+
+### Online payments: Paymob or Stripe
+
+With a payment provider connected, customers can pay right after placing an order; the order is marked **Paid online** and confirmed on its own.
+
+- **Paymob** (Egypt, Saudi Arabia, UAE, Oman, Pakistan): paste your secret key, public key, HMAC secret and integration IDs from the Paymob dashboard, then paste the callback URL shown in the panel as the *Transaction processed callback*.
+- **Stripe** (worldwide): paste your secret key (`sk_live_…` or `sk_test_…`). Optionally add a webhook to `https://your-domain/webhooks/stripe` for `checkout.session.completed` and paste its signing secret.
+- Each payment is checked with the provider when the customer comes back, and again by the webhook if they close the page. The amount and currency are verified and a payment is counted only once. Use test keys and **Open a test payment** to try it.
+- Your manual payment details and payment link still work when no provider is connected.
+
+### Automatic WhatsApp messages (WhatsApp Cloud API)
+
+Without this, the one-tap WhatsApp links keep working as before. With it, these messages go out on their own from your business number:
+
+| Message | Sent when | Template name |
+|---|---|---|
+| Order confirmed | the order is paid online or you press **Confirm** | `dukkan_confirmed` |
+| Order ready | you press **Done ✓** on the order | `dukkan_ready` |
+
+1. Create an app at [Meta for Developers](https://developers.facebook.com/) with the WhatsApp product, and copy the **phone number ID** and a **permanent access token** (system user).
+2. WhatsApp only lets businesses start conversations with approved templates. Create each template with the exact text shown in the panel (copy button), wait for approval, then switch it on.
+3. **Send test** sends Meta's `hello_world` template to check the connection. Meta bills business-initiated conversations according to its own pricing.
+
+### Email (SMTP)
+
+Use any mailbox, for example your Hostinger email (`smtp.hostinger.com`, port 465 with SSL/TLS, or 587). With email set up, you get new-order alerts and the daily backup by email. Alerts and the daily backup copy can each be switched on or off.
+
+### Notifications on this device
+
+The admin can be installed on your phone's home screen like an app. Press **Turn on notifications** on each device that should get an instant notification for new activity, no Telegram needed (on iPhone, add the admin to the home screen first; iOS 16.4+). Telegram alerts still work too.
+
+### Automatic daily backups
+
+Every day the app saves a backup to `DATA_DIR/backups/` and keeps the last 14 days. Download any of them from the panel, or press **Back up now**. Turn on **Email me the daily backup** to keep a gzipped copy off the server. To restore, use **Settings → Backup → Restore backup**. If the app hits an error or a backup fails, you get an alert (at most once an hour).
+
+### White-label (agency mode)
+
+In the agency panel (`/hub` → Settings), set your agency name and website: every client page then says "powered by *your agency*" instead of Dukkan, or you can hide the line completely. Client login screens show your name too.
+
 ## Agency mode: host all your clients on one server
 
 Freelancers and agencies can run **one Dukkan server for many clients**. Each client gets their own fully separate shop (own admin, password, data and photos) at `client.yourdomain.com` or their own domain, with automatic HTTPS. You manage everyone from one panel at `/hub`.
@@ -230,7 +273,7 @@ The message includes a link straight to the order inbox. To send notifications t
 
 ### Multiple branches
 
-Each branch runs its own copy of Dukkan: its own admin, menu, data and WhatsApp number, usually on its own subdomain (`downtown.example.com`, `mall.example.com`…). Copies are tiny (about 60 MB of RAM each), so one small VPS can run many.
+Each branch runs its own copy of Dukkan: its own admin, menu, data and WhatsApp number, usually on its own subdomain (`downtown.example.com`, `mall.example.com`…). Copies are tiny (about 70 MB of RAM each), so one small VPS can run many.
 
 [`examples/branches/`](examples/branches) has a ready-to-use `docker-compose.yml` and `Caddyfile` for two branches behind automatic HTTPS. To add a branch, copy a service block, give it a new volume, and add one line to the `Caddyfile`. Point each subdomain's DNS at the server, run `docker compose up -d`, and open each subdomain's `/admin` to set it up. On a Hostinger VPS you can also deploy the template several times instead.
 
@@ -298,7 +341,8 @@ Copy `locales/en.json` to `locales/<code>.json`, translate the values, and set `
 - [x] Telegram notifications for new orders
 - [ ] Add-ons per product (extra cheese, sauces…)
 - [x] Multiple branches (one instance per branch, [example](examples/branches))
-- [ ] Email notifications
+- [x] Email notifications and daily backups
+- [x] Online payments (Paymob, Stripe) and automatic WhatsApp messages
 
 ## License
 

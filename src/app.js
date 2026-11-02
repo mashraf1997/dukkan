@@ -20,11 +20,18 @@ const {
   canOrder,
   whatsappMessage,
   whatsappUrl,
+  formatMoney,
   STATUSES,
 } = require('./orders');
 const { renderStore, renderQrPrint, renderReceipt, renderManifest } = require('./views');
 const { cleanTheme, cleanFont, appearanceOptions } = require('./theme');
 const notify = require('./notify');
+const payments = require('./payments');
+const wa = require('./whatsapp');
+const mailer = require('./mailer');
+const push = require('./push');
+const backup = require('./backup');
+const { strings } = require('./i18n');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -136,7 +143,22 @@ const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
  * @param {object} [opts.demo]    demo config from demoConfig()
  * @param {boolean} [opts.quiet]  don't log the setup code
  */
-function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
+/** Local number → international digits, using the shop's own WhatsApp country code. */
+function intlPhone(phone, shopWhatsapp) {
+  const raw = String(phone || '').trim();
+  let digits = raw.replace(/\D/g, '');
+  if (raw.startsWith('+')) return digits;
+  if (digits.startsWith('00')) return digits.slice(2);
+  const shop = String(shopWhatsapp || '').replace(/\D/g, '');
+  if (digits.startsWith('0') && shop) {
+    const national = digits.slice(1);
+    const cc = shop.slice(0, shop.length - national.length);
+    if (cc.length >= 1 && cc.length <= 3) digits = cc + national;
+  }
+  return digits;
+}
+
+function createApp({ dataDir, setupCode, demo = null, quiet = false, branding = null }) {
   const store = new Store(dataDir);
   const app = express();
   const loginLimited = auth.rateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -180,6 +202,58 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
   const isSecure = (req) => req.secure;
   const pickLang = (req) => (LANGS.includes(req.query.lang) ? req.query.lang : store.settings.lang);
 
+  // ---------- integrations ----------
+  const rememberBase = (req) => {
+    const b = baseUrl(req);
+    if (store.db.publicUrl !== b && !/\/\/(localhost|127\.0\.0\.1)[:/]/.test(b)) {
+      store.db.publicUrl = b;
+      store.save();
+    }
+  };
+  const publicBase = () => store.db.publicUrl || `http://localhost:${process.env.PORT || 3000}/`;
+  const snapshot = () => {
+    const { settings, categories, products, coupons } = store.db;
+    return { app: 'dukkan', version: 1, exportedAt: new Date().toISOString(), settings, categories, products, coupons, orders: store.orders };
+  };
+  const tx = () => strings(store.settings.lang);
+  const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+  const WA_KINDS = [
+    { key: 'confirmed', defaultName: 'dukkan_confirmed', params: ['name', 'order', 'total', 'shop'], sample: { en: 'Hi {{1}}! Your order #{{2}} ({{3}}) is confirmed and being prepared. Thank you for ordering from {{4}} 🙏', ar: 'أهلًا يا {{1}}! طلبك رقم {{2}} ({{3}}) اتأكد وبيتجهز. شكرًا إنك طلبت من {{4}} 🙏' } },
+    { key: 'ready', defaultName: 'dukkan_ready', params: ['name', 'order', 'shop'], sample: { en: 'Hi {{1}}, your order #{{2}} from {{3}} is ready 🎉', ar: 'أهلًا يا {{1}}، طلبك رقم {{2}} من {{3}} جاهز 🎉' } },
+  ];
+  const autoWa = (kind) => {
+    const c = wa.cfgOf(store);
+    return wa.ready(c) && !!(c.templates[kind] || {}).enabled;
+  };
+  /** Tell the customer when the order is confirmed / ready (WhatsApp API), once each. */
+  function messageCustomer(o) {
+    if (!o || !o.customer.phone) return;
+    const to = intlPhone(o.customer.phone, store.settings.whatsapp);
+    const name = firstName(o.customer.name);
+    if (o.status === 'confirmed' && !o.confirmSent) {
+      wa.sendInBackground(store, 'confirmed', to, [name, o.no, formatMoney(o.total, store.settings.currency), store.settings.name]);
+      o.confirmSent = true;
+      store.saveOrders();
+    } else if (o.status === 'completed' && !o.readySent) {
+      wa.sendInBackground(store, 'ready', to, [name, o.no, store.settings.name]);
+      o.readySent = true;
+      store.saveOrders();
+    }
+  }
+  async function onPaid(kind, id, info) {
+    if (kind !== 'order') return;
+    const o = store.orders.find((x) => x.id === id);
+    if (!o) return;
+    o.paid = true;
+    o.paidAt = new Date().toISOString();
+    o.paidVia = info.provider;
+    if (o.status === 'new') o.status = 'confirmed';
+    store.saveOrders();
+    messageCustomer(o);
+    notify.alertOwner(store, `💳 *${tx().msgPaidOnline} #${o.no}*\n${formatMoney(info.amount, store.settings.currency)} · ${o.customer.name}`, { url: `${publicBase()}admin#orders`, path: '/admin#orders' });
+  }
+  const payOnline = () => !demo && payments.ready(payments.cfgOf(store));
+
   const requireAuth = (req, res, next) => {
     if (auth.isAuthenticated(req, store.db)) return next();
     res.status(401).json({ error: 'unauthorized' });
@@ -196,6 +270,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
   };
 
   // ---------- static ----------
+  payments.mountPublic(app, store, express, { onPaid });
   app.use(express.static(PUBLIC_DIR, { maxAge: '1h', index: false }));
   app.use('/uploads', express.static(store.uploadsDir, { maxAge: '30d', immutable: true }));
 
@@ -218,7 +293,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
 
     const open = canOrder(settings);
     const html = renderStore({
-      settings,
+      settings: branding ? { ...settings, _brand: branding() } : settings,
       categories: store.sortedCategories(),
       products: store.sortedProducts(),
       lang,
@@ -256,10 +331,31 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     if (orderLimited(req.ip)) return res.status(429).json({ error: 'rate_limited' });
     const result = buildOrder(req.body, store);
     if (result.error) return res.status(400).json(result);
-    const order = store.addOrder(result.order);
+    const order = store.addOrder({ ...result.order, token: crypto.randomBytes(12).toString('base64url'), paid: false });
     const text = whatsappMessage(order, store.settings);
-    notify.notifyInBackground(store.db.notify, `${text}\n\n🔗 ${baseUrl(req)}admin#orders`);
-    res.json({ no: order.no, total: order.total, whatsappUrl: whatsappUrl(store.settings.whatsapp, text) });
+    rememberBase(req);
+    notify.alertOwner(store, text, { url: `${baseUrl(req)}admin#orders`, path: '/admin#orders' });
+    res.json({ no: order.no, total: order.total, token: order.token, payOnline: payOnline() && order.total > 0, whatsappUrl: whatsappUrl(store.settings.whatsapp, text) });
+  });
+
+  // Customer's view of their order after paying (no personal details).
+  const byToken = (t) => (typeof t === 'string' && t.length >= 12 ? store.orders.find((o) => o.token === t) : null);
+  api.get('/orders/:token', (req, res) => {
+    const o = byToken(req.params.token);
+    if (!o) return res.status(404).json({ error: 'not_found' });
+    res.json({ no: o.no, total: o.total, status: o.status, paid: !!o.paid });
+  });
+  api.post('/orders/:token/checkout', async (req, res) => {
+    if (orderLimited(req.ip)) return res.status(429).json({ error: 'rate_limited' });
+    const o = byToken(req.params.token);
+    if (!o) return res.status(404).json({ error: 'not_found' });
+    if (o.paid || o.status === 'cancelled' || !(o.total > 0)) return res.status(400).json({ error: 'not_payable' });
+    try {
+      const r = await payments.createCheckout(store, baseUrl(req), { kind: 'order', id: o.id, amount: o.total, title: `${store.settings.name} · #${o.no}`, customer: o.customer, returnTo: `/?order=${o.token}` });
+      res.json({ url: r.url });
+    } catch (err) {
+      res.status(400).json({ error: err.code || 'provider_error' });
+    }
   });
 
   api.post('/coupon', (req, res) => {
@@ -280,6 +376,7 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
       needsSetupCode: !store.db.setupDone,
       demo: demo ? { password: demo.password, resetMinutes: demo.resetMinutes } : null,
       languages: LANGUAGES,
+      brand: branding ? branding() : null,
     });
   });
 
@@ -323,6 +420,15 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
   const admin = express.Router();
   admin.use(requireAuth);
   notify.mountRoutes(admin, store, { guard: notInDemo, appName: 'Dukkan' });
+  payments.mountAdmin(admin, store, { guard: notInDemo, baseUrl });
+  wa.mountAdmin(admin, store, { guard: notInDemo, kinds: WA_KINDS });
+  mailer.mountAdmin(admin, store, { guard: notInDemo, appName: 'Dukkan' });
+  push.mountAdmin(admin, store, { appName: 'Dukkan' });
+  backup.mountAdmin(admin, store, { snapshot, guard: notInDemo, appName: 'Dukkan' });
+  admin.use((req, res, next) => {
+    rememberBase(req);
+    next();
+  });
 
   admin.get('/data', (req, res) => {
     res.json({
@@ -492,7 +598,10 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     if (!STATUSES.includes(status)) return res.status(400).json({ error: 'invalid_status' });
     const order = store.updateOrderStatus(req.params.id, status);
     if (!order) return res.status(404).json({ error: 'not_found' });
-    res.json(order);
+    const flag = { confirmed: 'confirmSent', completed: 'readySent' }[status];
+    const before = flag ? !!order[flag] : true;
+    messageCustomer(order);
+    res.json({ ...order, autoSent: !before && !!order[flag] && autoWa(status === 'completed' ? 'ready' : 'confirmed') });
   });
 
   admin.get('/stats', (req, res) => res.json(computeStats(store)));
@@ -505,9 +614,8 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
 
   // ---- backup ----
   admin.get('/export', (req, res) => {
-    const { settings, categories, products, coupons } = store.db;
     res.setHeader('Content-Disposition', `attachment; filename="dukkan-backup-${new Date().toISOString().slice(0, 10)}.json"`);
-    res.json({ app: 'dukkan', version: 1, exportedAt: new Date().toISOString(), settings, categories, products, coupons, orders: store.orders });
+    res.json(snapshot());
   });
 
   admin.post('/import', notInDemo, (req, res) => {
@@ -564,9 +672,11 @@ function createApp({ dataDir, setupCode, demo = null, quiet = false }) {
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'too_large' });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'invalid_json' });
     console.error(err);
+    notify.alertError(store, 'Dukkan', err);
     res.status(500).json({ error: 'server_error' });
   });
 
+  if (!demo) backup.schedule(store, { snapshot, mailer, alert: (text) => notify.alertOwner(store, text), appName: 'Dukkan' });
   app.locals.store = store;
   app.locals.setupCode = store.db.setupCode;
   return app;
@@ -657,4 +767,4 @@ function computeStats(store) {
   };
 }
 
-module.exports = { createApp, generateSetupCode };
+module.exports = { intlPhone, createApp, generateSetupCode };
